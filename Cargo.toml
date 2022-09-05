@@ -1,0 +1,21 @@
+[package]
+name = "vimeo-showcase"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "3.2.20", features = ["derive"] }
+clap-verbosity-flag = "1.0.1"
+color-eyre = "0.6.2"
+futures = "0.3.24"
+log = "0.4.17"
+regex = "1.6.0"
+reqwest = { version = "0.11.11", default-features = false, features = ["rustls-tls"] }
+serde = { version = "1.0", features = ["derive", "rc"] }
+serde_json = "1.0.85"
+tokio = { version = "1.21.0", features = ["macros", "rt", "rt-multi-thread", "process"] }
+tracing = "0.1.36"
+tracing-attributes = "0.1.22"
+tracing-subscriber = "0.3.15"

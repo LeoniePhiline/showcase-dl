@@ -10,6 +10,8 @@ clap = { version = "3.2.20", features = ["derive"] }
 clap-verbosity-flag = "1.0.1"
 color-eyre = "0.6.2"
 futures = "0.3.24"
+html-escape = "0.2.11"
+json_dotpath = "1.1.0"
 log = "0.4.17"
 regex = "1.6.0"
 reqwest = { version = "0.11.11", default-features = false, features = ["rustls-tls"] }

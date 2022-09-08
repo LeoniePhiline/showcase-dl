@@ -14,9 +14,11 @@ use tracing::{debug, info};
 mod args;
 mod state;
 mod trace;
+mod ui;
 mod util;
 
-use state::{video::Video, State};
+use crate::state::{video::Video, State};
+use crate::ui::Ui;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<()> {
@@ -26,7 +28,19 @@ async fn main() -> Result<()> {
 
     trace::init(&args)?;
 
-    let page_url = Url::parse(&args.url)?;
+    let state = Arc::new(State::new());
+    let ui = Ui::new();
+
+    tokio::select! {
+        v = extract_and_download(state.clone(), &args.url) => v,
+        v = ui.event_loop(&state, args.tick) => v,
+    }?;
+
+    Ok(())
+}
+
+async fn extract_and_download<'a>(state: Arc<State<'a>>, url: &'a str) -> Result<()> {
+    let page_url = Url::parse(url)?;
     debug!("Parsed page URL: {page_url:#?}");
 
     let referer = format!(
@@ -36,21 +50,26 @@ async fn main() -> Result<()> {
     );
 
     info!("Fetch source page...");
+    state.set_fetching_source_page(url).await;
+
     let response_text = Client::new().get(page_url).send().await?.text().await?;
     debug!(page_response_text = ?response_text);
 
-    let state = Arc::new(State::new());
-
     info!("Extract vimeo embeds...");
+    state.set_processing_videos().await;
+
     tokio::try_join!(
         process_showcases(&response_text, &referer, state.clone()),
         process_simple_embeds(&response_text, &referer, state.clone())
     )?;
-
     Ok(())
 }
 
-async fn process_simple_embeds(page_body: &str, referer: &str, state: Arc<State>) -> Result<()> {
+async fn process_simple_embeds(
+    page_body: &str,
+    referer: &str,
+    state: Arc<State<'_>>,
+) -> Result<()> {
     lazy_static! {
         static ref RE: Regex = Regex::new(
             r#"<iframe[^>]+ src="(?P<embed_url>https://player\.vimeo\.com/video/[^"]+)""#
@@ -122,7 +141,7 @@ async fn extract_simple_embed_title(video: Arc<Video>, referer: &str) -> Result<
     Ok(())
 }
 
-async fn process_showcases(page_body: &str, referer: &str, state: Arc<State>) -> Result<()> {
+async fn process_showcases(page_body: &str, referer: &str, state: Arc<State<'_>>) -> Result<()> {
     lazy_static! {
         static ref RE: Regex =
             Regex::new(r#"<iframe[^>]+ src="(?P<embed_url>https://vimeo\.com/showcase/[^"]+)""#)
@@ -151,7 +170,11 @@ async fn process_showcases(page_body: &str, referer: &str, state: Arc<State>) ->
     Ok(())
 }
 
-async fn process_showcase_embed(embed_url: &str, referer: &str, state: Arc<State>) -> Result<()> {
+async fn process_showcase_embed(
+    embed_url: &str,
+    referer: &str,
+    state: Arc<State<'_>>,
+) -> Result<()> {
     let response_text = util::fetch_with_referer(embed_url, referer).await?;
 
     let app_data_line = response_text
@@ -189,7 +212,7 @@ async fn process_showcase_embed(embed_url: &str, referer: &str, state: Arc<State
     Ok(())
 }
 
-async fn process_showcase_clip(clip: &Value, referer: &str, state: Arc<State>) -> Result<()> {
+async fn process_showcase_clip(clip: &Value, referer: &str, state: Arc<State<'_>>) -> Result<()> {
     let config_url = clip
         .dot_get::<String>("config")?
         .ok_or_else(|| eyre!("Could not read clip config URL from 'app-data.clips.[].config'."))?;

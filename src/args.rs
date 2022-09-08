@@ -11,6 +11,10 @@ pub struct Args {
     #[clap(action)]
     pub url: String,
 
+    /// UI refresh interval in milliseconds
+    #[clap(short, long, default_value_t = 50, action)]
+    pub tick: u64,
+
     #[clap(flatten)]
     pub verbosity: clap_verbosity_flag::Verbosity,
 }

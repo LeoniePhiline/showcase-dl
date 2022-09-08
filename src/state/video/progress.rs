@@ -1,10 +1,12 @@
-use std::{fmt::Display, ops::Range};
+use std::{borrow::Cow, fmt::Display, ops::Range};
 
-pub enum Progress {
-    Raw(String),
+pub enum VideoProgress<'a> {
+    Raw(&'a str),
     Parsed {
-        line: String,
-        percent: Option<f32>,
+        line: &'a str,
+        // Using f64 instead of f32 to match `tui::widget::Gauge.ratio`.
+        percent: Option<f64>,
+
         size: Option<Range<usize>>,
         speed: Option<Range<usize>>,
         eta: Option<Range<usize>>,
@@ -13,7 +15,49 @@ pub enum Progress {
     },
 }
 
-impl Display for Progress {
+impl<'a> VideoProgress<'a> {
+    pub fn row(&self) -> Option<[Cow<'a, str>; 5]> {
+        match self {
+            Self::Raw(_) => None,
+            Self::Parsed {
+                line,
+                percent,
+                size,
+                speed,
+                eta,
+                frag,
+                frag_total,
+            } => Some([
+                Cow::Owned(format!("{:.1} %", percent.unwrap_or(0.0))),
+                Cow::Borrowed(match size {
+                    Some(size) => &line[size.clone()],
+                    None => "",
+                }),
+                Cow::Borrowed(match speed {
+                    Some(speed) => &line[speed.clone()],
+                    None => "",
+                }),
+                Cow::Borrowed(match eta {
+                    Some(eta) => &line[eta.clone()],
+                    None => "",
+                }),
+                match frag {
+                    Some(frag) => Cow::Owned({
+                        let mut sections = Vec::with_capacity(2);
+                        sections.push(frag.to_string());
+                        if let Some(frag_total) = frag_total {
+                            sections.push(frag_total.to_string());
+                        }
+                        sections.join(" / ")
+                    }),
+                    None => Cow::Borrowed(""),
+                },
+            ]),
+        }
+    }
+}
+
+impl<'a> Display for VideoProgress<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Parsed {
@@ -25,7 +69,6 @@ impl Display for Progress {
                 frag,
                 frag_total,
             } => {
-                write!(f, "Parsed progress: ")?;
                 if let Some(percent) = percent {
                     write!(f, "{:.1} % done. ", percent)?;
                 }
@@ -46,7 +89,7 @@ impl Display for Progress {
                     write!(f, ". ")?;
                 }
             }
-            Progress::Raw(line) => write!(f, "Raw progress: {line}")?,
+            VideoProgress::Raw(line) => write!(f, "{line}")?,
         }
 
         Ok(())

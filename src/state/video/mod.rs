@@ -7,13 +7,13 @@ use regex::Regex;
 use std::{process::Stdio, sync::Arc};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
-    sync::RwLock,
+    sync::{RwLock, RwLockReadGuard},
 };
-use tracing::{debug, info};
+use tracing::debug;
 
-use self::progress::Progress;
+use self::progress::VideoProgress;
 
-mod progress;
+pub mod progress;
 
 // TODO: Might `Cow` be of any help here? Can I use references for any of this?
 pub struct Video {
@@ -21,6 +21,12 @@ pub struct Video {
     referer: String,
     title: RwLock<Option<String>>,
     line: RwLock<Option<String>>,
+}
+
+pub struct VideoRead<'a> {
+    url: &'a str,
+    title: RwLockReadGuard<'a, Option<String>>,
+    line: RwLockReadGuard<'a, Option<String>>,
 }
 
 impl Video {
@@ -58,59 +64,17 @@ impl Video {
         *title = Some(new_title);
     }
 
+    pub async fn title(&self) -> RwLockReadGuard<Option<String>> {
+        self.title.read().await
+    }
+
     pub async fn update_line(&self, new_line: String) {
         let mut line = self.line.write().await;
         *line = Some(new_line);
     }
 
-    pub async fn progress(&self) -> Result<Option<Progress>> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(
-                // TODO: "Finished" looks like this: '[download] 100% of 956.44MiB in 00:15 at 63.00MiB/s'.
-                //       This is currently not parsed. Maybe there is no need to parse? -> Can show as `Progress::Raw(line)`.
-                r#"\[download\]\s+(?P<percent>[\d+\.]+?)% of (?P<size>~?[\d+\.]+?(?:[KMG]i)B) at\s+(?P<speed>(?:~?[\d+\.]+?(?:[KMG]i)?|Unknown )B/s) ETA\s+(?P<eta>(?:[\d:-]+|Unknown))(?: \(frag (?P<frag>\d+)/(?P<frag_total>\d+)\))?"#,
-            ).unwrap();
-        }
-
-        let maybe_line = self.line.read().await;
-        Ok(match *maybe_line {
-            Some(ref line) => {
-                let line = line.clone();
-                let maybe_captures = RE.captures(&line);
-                match maybe_captures {
-                    Some(captures) => {
-                        let percent = captures
-                            .name("percent")
-                            .and_then(|percent_match| percent_match.as_str().parse::<f32>().ok());
-
-                        let size = captures.name("size").map(|size_match| size_match.range());
-                        let speed = captures
-                            .name("speed")
-                            .map(|speed_match| speed_match.range());
-                        let eta = captures.name("eta").map(|eta_match| eta_match.range());
-
-                        let frag = captures
-                            .name("frag")
-                            .and_then(|frag_match| frag_match.as_str().parse::<u16>().ok());
-
-                        let frag_total = captures.name("frag_total").and_then(|frag_total_match| {
-                            frag_total_match.as_str().parse::<u16>().ok()
-                        });
-                        Some(Progress::Parsed {
-                            line,
-                            percent,
-                            size,
-                            speed,
-                            eta,
-                            frag,
-                            frag_total,
-                        })
-                    }
-                    None => Some(Progress::Raw(line)),
-                }
-            }
-            None => None,
-        })
+    pub async fn line(&self) -> RwLockReadGuard<Option<String>> {
+        self.line.read().await
     }
 
     pub async fn download(self: Arc<Self>) -> Result<()> {
@@ -151,11 +115,6 @@ impl Video {
                 .await;
 
                 self.update_line(next_line).await;
-
-                match self.progress().await? {
-                    Some(progress) => info!("{progress}"),
-                    None => info!("No progress"),
-                };
             }
 
             Ok::<(), Report>(())
@@ -171,5 +130,74 @@ impl Video {
             .wrap_err("yt-dlp command failed to run")?;
 
         Ok(())
+    }
+
+    // Acquire read guards for all fine-grained access-controlled fields.
+    pub async fn read(&self) -> VideoRead {
+        VideoRead {
+            url: &self.url,
+            title: self.title().await,
+            line: self.line().await,
+        }
+    }
+}
+
+impl<'a> VideoRead<'a> {
+    pub fn url(&self) -> &'a str {
+        self.url
+    }
+
+    pub fn title(&self) -> &Option<String> {
+        &(*self.title)
+    }
+
+    // TODO: Should this be a method on the `VideoRead` struct impl instead of the `Video` struct impl?
+    //       We need to already have the line acquired anyway.
+    pub fn progress(&'a self) -> Option<VideoProgress<'a>> {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(
+                // TODO: "Finished" looks like this: '[download] 100% of 956.44MiB in 00:15 at 63.00MiB/s'.
+                //       This is currently not parsed. Maybe there is no need to parse? -> Can show as `Progress::Raw(line)`.
+                r#"\[download\]\s+(?P<percent>[\d+\.]+?)% of (?P<size>~?[\d+\.]+?(?:[KMG]i)B)(?: at\s+(?P<speed>(?:~?[\d+\.]+?(?:[KMG]i)?|Unknown )B/s))?(?: ETA\s+(?P<eta>(?:[\d:-]+|Unknown)))?(?: \(frag (?P<frag>\d+)/(?P<frag_total>\d+)\))?"#,
+            ).unwrap();
+        }
+
+        match *self.line {
+            Some(ref line) => {
+                let maybe_captures = RE.captures(line.as_str());
+                match maybe_captures {
+                    Some(captures) => {
+                        let percent = captures
+                            .name("percent")
+                            .and_then(|percent_match| percent_match.as_str().parse::<f64>().ok());
+
+                        let size = captures.name("size").map(|size_match| size_match.range());
+                        let speed = captures
+                            .name("speed")
+                            .map(|speed_match| speed_match.range());
+                        let eta = captures.name("eta").map(|eta_match| eta_match.range());
+
+                        let frag = captures
+                            .name("frag")
+                            .and_then(|frag_match| frag_match.as_str().parse::<u16>().ok());
+
+                        let frag_total = captures.name("frag_total").and_then(|frag_total_match| {
+                            frag_total_match.as_str().parse::<u16>().ok()
+                        });
+                        Some(VideoProgress::Parsed {
+                            line,
+                            percent,
+                            size,
+                            speed,
+                            eta,
+                            frag,
+                            frag_total,
+                        })
+                    }
+                    None => Some(VideoProgress::Raw(line)),
+                }
+            }
+            None => None,
+        }
     }
 }

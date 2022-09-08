@@ -9,6 +9,7 @@ edition = "2021"
 clap = { version = "3.2.20", features = ["derive"] }
 clap-verbosity-flag = "1.0.1"
 color-eyre = "0.6.2"
+crossterm = { version = "0.25.0", features = ["event-stream"] }
 futures = "0.3.24"
 html-escape = "0.2.11"
 json_dotpath = "1.1.0"
@@ -22,3 +23,4 @@ tokio = { version = "1.21.0", features = ["macros", "rt", "rt-multi-thread", "pr
 tracing = "0.1.36"
 tracing-attributes = "0.1.22"
 tracing-subscriber = "0.3.15"
+tui = "0.19.0"

@@ -15,7 +15,7 @@ pub fn layout_chunks(size: Rect, videos: &RwLockReadGuard<Vec<VideoRead>>) -> Ve
 }
 
 fn layout_constraints(videos: &RwLockReadGuard<Vec<VideoRead>>) -> Vec<Constraint> {
-    let mut video_constraints = Vec::with_capacity(videos.len()); // TODO: Instead of re-allocating, place this vec in Ui struct - and only adjust its length as needed?
+    let mut video_constraints = Vec::with_capacity(1 + videos.len() * 4 + 1); // TODO: Instead of re-allocating, place this vec in Ui struct - and only adjust its length as needed?
 
     // Application title block and table header, with bottom margin
     video_constraints.push(Constraint::Length(3));
@@ -41,7 +41,7 @@ pub fn video_raw_progress_table_layout() -> [Constraint; 3] {
     [
         Constraint::Percentage(17),
         Constraint::Percentage(16),
-        Constraint::Percentage(67),
+        Constraint::Percentage(67), // = 17 + 17 + 16 + 17 (4-column span)
     ]
 }
 

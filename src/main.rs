@@ -31,6 +31,14 @@ async fn main() -> Result<()> {
     let state = Arc::new(State::new());
     let ui = Ui::new();
 
+    // TODO: Graceful shutdown!
+    //       - when cancelling with Ctrl+C
+    //       - or when extract_and_download() finishes before the ui event loop is terminated.
+    // TODO: Should we keep the event loop running even when extract_and_download() has run to completion?
+    //       Currently, the app terminate and hands control back to the terminal once all videos are downloaded.
+    //       This might even be the desired behavior.
+    //       However, the last item never turns green, as one last render (rendering the progression
+    //       from "video downloading" to "video finished") would need to be done before terminating.
     tokio::select! {
         v = extract_and_download(state.clone(), &args.url) => v,
         v = ui.event_loop(&state, args.tick) => v,

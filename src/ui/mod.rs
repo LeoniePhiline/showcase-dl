@@ -10,8 +10,8 @@ use tokio::{sync::RwLock, time::MissedTickBehavior};
 use tui::{
     backend::CrosstermBackend,
     layout::Alignment,
-    text::{Span, Spans},
-    widgets::{Block, BorderType, Borders, Gauge, Paragraph, Row, Table},
+    text::Span,
+    widgets::{Block, BorderType, Borders, Gauge, Row, Table},
     Terminal,
 };
 
@@ -164,11 +164,11 @@ impl Ui {
             f.render_widget(
                 Table::new([])
                     .header(
-                        Row::new(["Progress", "Size", "Speed", "ETA", "Fragments"])
+                        Row::new(["Stage", "Progress", "Size", "Speed", "ETA", "Fragments"])
                             .style(style::table_header_style())
                             .bottom_margin(1),
                     )
-                    .widths(&layout::video_progress_table_layout())
+                    .widths(&layout::video_progress_detail_table_layout())
                     .column_spacing(2)
                     .block(
                         Block::default()
@@ -190,26 +190,16 @@ impl Ui {
                 // Video title block
                 f.render_widget(
                     Block::default()
-                        .title(Spans::from(vec![
-                            Span::styled(
-                                match video.stage() {
-                                    VideoStage::Initializing => "Intializing...",
-                                    VideoStage::Downloading => "Downloading...",
-                                    VideoStage::Finished => "Finished!     ",
-                                },
-                                style::video_stage_style(video.stage()),
+                        .title(Span::styled(
+                            format!(
+                                "{} ",
+                                match video.title() {
+                                    Some(title) => title.as_str(),
+                                    None => video.url(),
+                                }
                             ),
-                            Span::styled(
-                                format!(
-                                    " - {}",
-                                    match video.title() {
-                                        Some(title) => title.as_str(),
-                                        None => video.url(),
-                                    }
-                                ),
-                                style::video_title_style(),
-                            ),
-                        ]))
+                            style::video_title_style(),
+                        ))
                         .borders(Borders::TOP)
                         .border_style(style::border_style())
                         .border_type(BorderType::Plain),
@@ -217,31 +207,80 @@ impl Ui {
                 );
 
                 // Video raw progress text or parsed progress
+                let progress_detail_chunk = chunks[chunk_start + 1];
+                let display_percent = video
+                    .last_percent()
+                    .unwrap_or_else(|| Self::video_percent_default(video.stage()));
                 let maybe_progress_detail = video.progress_detail();
                 if let Some(progress) = &maybe_progress_detail {
+                    // Build two variants of details table, depending on if we have a
+                    let mut row = Vec::with_capacity(match progress {
+                        ProgressDetail::Raw(_) => 3,
+                        ProgressDetail::Parsed { .. } => 6,
+                    });
+
+                    // Column "Stage"
+                    row.push(Span::styled(
+                        match video.stage() {
+                            VideoStage::Initializing => "Intializing...",
+                            VideoStage::Downloading => "Downloading...",
+                            VideoStage::Finished => "Finished!",
+                        },
+                        style::video_stage_style(video.stage()),
+                    ));
+
+                    // Column "Progress", using the last known progress,
+                    // as a fresh value can not in all cases be parsed from the current line.
+                    row.push(Span::raw(Cow::Owned(format!("{:.1} %", display_percent))));
+
                     match progress {
                         ProgressDetail::Raw(line) => {
-                            f.render_widget(Paragraph::new(*line), chunks[chunk_start + 1])
+                            // Single column, spanning across "Size", "Speed", "ETA" and "Fragments"
+                            row.push(Span::raw(match video.stage() {
+                                // Avoid showing the last output line when video progress is entirely finished.
+                                // Often this just says "Deleting output file [...]" after merging video
+                                // and audio formats. Which is just confusing to end users.
+                                VideoStage::Finished => "",
+                                // Display the last raw output line as long as video progress is not yet finished.
+                                _ => *line,
+                            }));
+
+                            f.render_widget(
+                                Table::new([Row::new(row)])
+                                    .widths(&layout::video_raw_progress_table_layout())
+                                    .column_spacing(2),
+                                progress_detail_chunk,
+                            )
                         }
-                        ProgressDetail::Parsed { .. } => f.render_widget(
-                            Table::new([Row::new(progress.row().unwrap())])
-                                .widths(&layout::video_progress_table_layout())
-                                .column_spacing(2),
-                            chunks[chunk_start + 1],
-                        ),
+                        ProgressDetail::Parsed { .. } => {
+                            // Columns "Size", "Speed", "ETA" and "Fragments"
+                            row.append(
+                                &mut progress
+                                    .to_table_cells()
+                                    // Unwrapping is oanic-safe here, as `.to_table_cells()`
+                                    // always returns `Some([Cow<'a, str>; 4])`
+                                    // for the `ProgressDetail::Parsed` enum variant.
+                                    .unwrap()
+                                    .into_iter()
+                                    .map(Span::raw)
+                                    .collect::<Vec<Span>>(),
+                            );
+
+                            f.render_widget(
+                                Table::new([Row::new(row)])
+                                    .widths(&layout::video_progress_detail_table_layout())
+                                    .column_spacing(2),
+                                progress_detail_chunk,
+                            )
+                        }
                     };
                 };
 
                 // Video progress bar
                 let gauge = Gauge::default()
                     .gauge_style(style::gauge_style(video.stage()))
-                    .use_unicode(true);
-                let gauge = match &maybe_progress_detail {
-                    Some(ProgressDetail::Parsed { percent, .. }) => {
-                        gauge.ratio(percent.unwrap_or(0.0) / 100.0)
-                    }
-                    _ => gauge,
-                };
+                    .use_unicode(true)
+                    .ratio(display_percent / 100.0);
 
                 f.render_widget(gauge, chunks[chunk_start + 2]);
 
@@ -251,5 +290,15 @@ impl Ui {
         })?;
 
         Ok(())
+    }
+
+    fn video_percent_default(stage: &VideoStage) -> f64 {
+        match stage {
+            // When a video is already present before starting the app,
+            // then this video will be finished without `video.last_percent`
+            // ever having been set. In that case, display 100 % right away.
+            VideoStage::Finished => 100.0,
+            _ => 0.0,
+        }
     }
 }

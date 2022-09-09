@@ -264,4 +264,8 @@ impl<'a> VideoRead<'a> {
             None => None,
         }
     }
+
+    pub fn last_percent(&self) -> &Option<f64> {
+        &(*self.last_percent)
+    }
 }

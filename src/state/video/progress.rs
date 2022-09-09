@@ -16,19 +16,18 @@ pub enum ProgressDetail<'a> {
 }
 
 impl<'a> ProgressDetail<'a> {
-    pub fn row(&self) -> Option<[Cow<'a, str>; 5]> {
+    pub fn to_table_cells(&self) -> Option<[Cow<'a, str>; 4]> {
         match self {
             Self::Raw(_) => None,
             Self::Parsed {
                 line,
-                percent,
                 size,
                 speed,
                 eta,
                 frag,
                 frag_total,
+                .. // `percent` is left out, as last known percent is rendered at all times.
             } => Some([
-                Cow::Owned(format!("{:.1} %", percent.unwrap_or(0.0))),
                 Cow::Borrowed(match size {
                     Some(size) => &line[size.clone()],
                     None => "",

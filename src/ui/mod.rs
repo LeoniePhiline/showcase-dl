@@ -254,6 +254,8 @@ impl Ui {
                 let maybe_progress_detail = video.progress_detail();
                 if let Some(progress) = &maybe_progress_detail {
                     // Build two variants of details table, depending on if we have a
+                    // `ProgressDetail::Raw(line)`, rendered as basics + unparsed `yt-dlp` output line,
+                    //  or a `ProgressDetail::Parsed { .. }`, rendered as full table of download stats.
                     let mut row = Vec::with_capacity(match progress {
                         ProgressDetail::Raw(_) => 3,
                         ProgressDetail::Parsed { .. } => 6,

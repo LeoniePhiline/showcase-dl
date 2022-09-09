@@ -893,6 +893,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "showcase-dl"
+version = "0.2.0"
+dependencies = [
+ "clap",
+ "clap-verbosity-flag",
+ "color-eyre",
+ "crossterm",
+ "futures",
+ "html-escape",
+ "json_dotpath",
+ "lazy_static",
+ "log",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-attributes",
+ "tracing-subscriber",
+ "tui",
+]
+
+[[package]]
 name = "signal-hook"
 version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1246,30 +1270,6 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
-
-[[package]]
-name = "vimeo-showcase"
-version = "0.2.0"
-dependencies = [
- "clap",
- "clap-verbosity-flag",
- "color-eyre",
- "crossterm",
- "futures",
- "html-escape",
- "json_dotpath",
- "lazy_static",
- "log",
- "regex",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-attributes",
- "tracing-subscriber",
- "tui",
-]
 
 [[package]]
 name = "want"

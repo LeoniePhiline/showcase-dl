@@ -101,7 +101,9 @@ impl Video {
 
         let mut lines = BufReader::new(stdout).lines();
 
-        tokio::spawn(async move {
+        // TODO: Distinguish video progress/state between living child process (downloading / processing) and ended child process ("Done!")
+
+        let process_pipe = tokio::spawn(async move {
             while let Some(next_line) = lines.next_line().await? {
                 self.use_title(|title| {
                     debug!(
@@ -118,16 +120,20 @@ impl Video {
             }
 
             Ok::<(), Report>(())
-        })
-        .await??;
+        });
 
-        // TODO: Join spawned stdout processor with child.wait(), or just run .wait() after?
-        //       Is .wait() even needed afer stdout stream ended?
+        let process_wait = tokio::spawn(async move {
+            child
+                .wait()
+                .await
+                .wrap_err("yt-dlp command failed to run")?;
 
-        child
-            .wait()
-            .await
-            .wrap_err("yt-dlp command failed to run")?;
+            Ok::<(), Report>(())
+        });
+
+        tokio::try_join!(async { process_pipe.await? }, async { process_wait.await? },)?;
+
+        // TODO: Distinguish video progress/state between living child process (downloading / processing) and ended child process ("Done!")
 
         Ok(())
     }

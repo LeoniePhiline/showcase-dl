@@ -39,7 +39,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn extract_and_download<'a>(state: Arc<State<'a>>, url: &'a str) -> Result<()> {
+async fn extract_and_download(state: Arc<State>, url: &str) -> Result<()> {
     let page_url = Url::parse(url)?;
     debug!("Parsed page URL: {page_url:#?}");
 
@@ -65,11 +65,7 @@ async fn extract_and_download<'a>(state: Arc<State<'a>>, url: &'a str) -> Result
     Ok(())
 }
 
-async fn process_simple_embeds(
-    page_body: &str,
-    referer: &str,
-    state: Arc<State<'_>>,
-) -> Result<()> {
+async fn process_simple_embeds(page_body: &str, referer: &str, state: Arc<State>) -> Result<()> {
     lazy_static! {
         static ref RE: Regex = Regex::new(
             r#"<iframe[^>]+ src="(?P<embed_url>https://player\.vimeo\.com/video/[^"]+)""#
@@ -92,18 +88,24 @@ async fn process_simple_embeds(
                         (*state).push_video(video.clone()).await;
 
                         tokio::try_join!(
-                            {
+                            async {
                                 let video = video.clone();
-                                async move {
+                                let referer = referer.to_owned();
+                                tokio::spawn(async move {
                                     debug!("Fetch title for simple embed '{}'...", video.url());
-                                    extract_simple_embed_title(video, referer).await?;
+                                    extract_simple_embed_title(video, &referer).await?;
                                     Ok::<(), Report>(())
-                                }
+                                })
+                                .await?
                             },
-                            async move {
-                                info!("Download simple embed '{}'...", video.url());
-                                video.download().await?;
-                                Ok(())
+                            async {
+                                let video = video.clone();
+                                tokio::spawn(async move {
+                                    info!("Download simple embed '{}'...", video.url());
+                                    video.download().await?;
+                                    Ok::<(), Report>(())
+                                })
+                                .await?
                             }
                         )?;
 
@@ -141,7 +143,7 @@ async fn extract_simple_embed_title(video: Arc<Video>, referer: &str) -> Result<
     Ok(())
 }
 
-async fn process_showcases(page_body: &str, referer: &str, state: Arc<State<'_>>) -> Result<()> {
+async fn process_showcases(page_body: &str, referer: &str, state: Arc<State>) -> Result<()> {
     lazy_static! {
         static ref RE: Regex =
             Regex::new(r#"<iframe[^>]+ src="(?P<embed_url>https://vimeo\.com/showcase/[^"]+)""#)
@@ -170,11 +172,7 @@ async fn process_showcases(page_body: &str, referer: &str, state: Arc<State<'_>>
     Ok(())
 }
 
-async fn process_showcase_embed(
-    embed_url: &str,
-    referer: &str,
-    state: Arc<State<'_>>,
-) -> Result<()> {
+async fn process_showcase_embed(embed_url: &str, referer: &str, state: Arc<State>) -> Result<()> {
     let response_text = util::fetch_with_referer(embed_url, referer).await?;
 
     let app_data_line = response_text
@@ -202,17 +200,22 @@ async fn process_showcase_embed(
     let clips = data.dot_get::<Vec<Value>>("clips")?.ok_or_else(|| {
         eyre!("Could not find 'clips' key in 'app-data', or 'clips' was not an array.")
     })?;
-    stream::iter(clips.iter().map(Ok))
-        .try_for_each_concurrent(None, |clip| {
+    stream::iter(clips.into_iter().map(Ok))
+        .try_for_each_concurrent(None, |clip| async {
             let state = state.clone();
-            async move { process_showcase_clip(clip, referer, state).await }
+            let referer = referer.to_owned();
+            async move {
+                tokio::spawn(async move { process_showcase_clip(&clip, &referer, state).await })
+                    .await?
+            }
+            .await
         })
         .await?;
 
     Ok(())
 }
 
-async fn process_showcase_clip(clip: &Value, referer: &str, state: Arc<State<'_>>) -> Result<()> {
+async fn process_showcase_clip(clip: &Value, referer: &str, state: Arc<State>) -> Result<()> {
     let config_url = clip
         .dot_get::<String>("config")?
         .ok_or_else(|| eyre!("Could not read clip config URL from 'app-data.clips.[].config'."))?;

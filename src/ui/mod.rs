@@ -5,7 +5,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use futures::{stream, StreamExt};
-use std::{io, sync::Arc, borrow::Cow};
+use std::{borrow::Cow, io, sync::Arc};
 use tokio::{sync::RwLock, time::MissedTickBehavior};
 use tui::{
     backend::CrosstermBackend,
@@ -17,7 +17,7 @@ use tui::{
 
 use crate::state::{
     video::{progress::VideoProgress, VideoRead},
-    State, Progress,
+    Progress, State,
 };
 
 mod layout;
@@ -30,7 +30,7 @@ impl Ui {
         Ui
     }
 
-    pub async fn event_loop(&self, state: &State<'_>, tick: u64) -> Result<()> {
+    pub async fn event_loop(&self, state: &State, tick: u64) -> Result<()> {
         let mut terminal = self.take_terminal()?;
 
         // Stream input events (Keyboard, Mouse, Resize)
@@ -118,7 +118,7 @@ impl Ui {
 
     async fn render<'a, 's>(
         &self,
-        state: &State<'_>,
+        state: &State,
         terminal: &'a mut Terminal<CrosstermBackend<std::io::Stdout>>,
     ) -> Result<()> {
         // The terminal's `draw()` method runs a sync closure, so we need to acquire all
@@ -131,8 +131,10 @@ impl Ui {
 
         let app_title = match *state.progress().await {
             Progress::Initializing => Cow::Borrowed(" INITIALIZING ... "),
-            Progress::FetchingSourcePage(url) => Cow::Owned(format!(" FETCHING SOURCE PAGE '{}' ... ", url)),
-            Progress::ProcessingVideos => Cow::Borrowed(" VIMEO SHOWCASE DOWNLOAD ")
+            Progress::FetchingSourcePage(ref url) => {
+                Cow::Owned(format!(" FETCHING SOURCE PAGE '{}' ... ", url))
+            }
+            Progress::ProcessingVideos => Cow::Borrowed(" VIMEO SHOWCASE DOWNLOAD "),
         };
 
         // Acquire read guards for all videos, to render full state.
@@ -169,10 +171,7 @@ impl Ui {
                     .column_spacing(2)
                     .block(
                         Block::default()
-                            .title(Span::styled(
-                                app_title,
-                                style::application_title_style(),
-                            ))
+                            .title(Span::styled(app_title, style::application_title_style()))
                             .title_alignment(Alignment::Center)
                             .borders(Borders::TOP)
                             .border_style(style::border_style())

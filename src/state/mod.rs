@@ -5,18 +5,18 @@ use self::video::Video;
 
 pub mod video;
 
-pub struct State<'a> {
-    progress: RwLock<Progress<'a>>,
+pub struct State {
+    progress: RwLock<Progress>,
     videos: RwLock<Vec<Arc<Video>>>,
 }
 
-pub enum Progress<'a> {
+pub enum Progress {
     Initializing,
-    FetchingSourcePage(&'a str),
+    FetchingSourcePage(String),
     ProcessingVideos,
 }
 
-impl<'a> State<'a> {
+impl State {
     pub fn new() -> Self {
         Self {
             progress: RwLock::new(Progress::Initializing),
@@ -24,15 +24,15 @@ impl<'a> State<'a> {
         }
     }
 
-    pub async fn set_fetching_source_page(&self, page_url: &'a str) {
-        *self.progress.write().await = Progress::FetchingSourcePage(page_url);
+    pub async fn set_fetching_source_page<'a>(&self, page_url: &'a str) {
+        *self.progress.write().await = Progress::FetchingSourcePage(page_url.to_string());
     }
 
     pub async fn set_processing_videos(&self) {
         *self.progress.write().await = Progress::ProcessingVideos;
     }
 
-    pub async fn progress(&self) -> RwLockReadGuard<Progress<'_>> {
+    pub async fn progress(&self) -> RwLockReadGuard<Progress> {
         self.progress.read().await
     }
 

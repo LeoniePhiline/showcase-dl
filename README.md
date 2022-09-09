@@ -12,9 +12,9 @@ This, however, soon turned into perfectionist yak shaving, ending up in a termin
 
 ## What does it do and how do I use it?
 
-Currently no prebuild binaries are provided. To compile the tool, simply get `rustup` and `cargo` by following the instructions at [https://rustup.rs/].
+Currently no prebuild binaries are provided. To compile the tool, simply get `rustup` and `cargo` by following the instructions at [rustup.rs](https://rustup.rs/).
 
-Then `git clone` this repository (or download as `.zip` file and extract), and run `cargo build --release` in the project folder. Cargo will make sure to download all dependencies from [https://crates.io], install and compile them; then it will compile the app for you.
+Then `git clone` this repository (or download as `.zip` file and extract), and run `cargo build --release` in the project folder. Cargo will make sure to download all dependencies from [crates.io](https://crates.io), install and compile them; then it will compile the app for you.
 
 The finished executable binary will be found at `<project folder>/target/release/showcase-dl` on Linux or Mac,
 or at `<project folder>/target/release/showcase-dl.exe` on Windows.

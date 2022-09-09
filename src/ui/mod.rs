@@ -299,7 +299,7 @@ impl Ui {
                             row.append(
                                 &mut progress
                                     .to_table_cells()
-                                    // Unwrapping is oanic-safe here, as `.to_table_cells()`
+                                    // Unwrapping is panic-safe here, as `.to_table_cells()`
                                     // always returns `Some([Cow<'a, str>; 4])`
                                     // for the `ProgressDetail::Parsed` enum variant.
                                     .unwrap()

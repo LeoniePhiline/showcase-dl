@@ -273,7 +273,7 @@ impl Ui {
 
                     // Column "Progress", using the last known progress,
                     // as a fresh value can not in all cases be parsed from the current line.
-                    row.push(Span::raw(Cow::Owned(format!("{:.1} %", display_percent))));
+                    row.push(Span::raw(format!("{:.1} %", display_percent)));
 
                     match progress {
                         ProgressDetail::Raw(line) => {

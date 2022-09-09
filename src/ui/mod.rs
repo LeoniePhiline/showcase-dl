@@ -4,7 +4,10 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use futures::{stream, StreamExt};
+use futures::{
+    future::{AbortHandle, Abortable},
+    stream, Future, StreamExt,
+};
 use std::{borrow::Cow, io, sync::Arc};
 use tokio::{sync::RwLock, time::MissedTickBehavior};
 use tui::{
@@ -30,7 +33,12 @@ impl Ui {
         Ui
     }
 
-    pub async fn event_loop(&self, state: &State, tick: u64) -> Result<()> {
+    pub async fn event_loop(
+        &self,
+        state: Arc<State>,
+        tick: u64,
+        do_work: impl Future<Output = Result<()>>,
+    ) -> Result<()> {
         let mut terminal = self.take_terminal()?;
 
         // Stream input events (Keyboard, Mouse, Resize)
@@ -40,25 +48,59 @@ impl Ui {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(tick));
         interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
 
-        self.render(state, &mut terminal).await?;
+        self.render(&state, &mut terminal).await?;
 
-        loop {
-            tokio::select! {
-                biased;
+        let (abort_handle, abort_registration) = AbortHandle::new_pair();
+        let do_work_abortable = Abortable::new(
+            async {
+                // Drive application process futures via closure.
+                do_work.await
+            },
+            abort_registration,
+        );
 
-                // Handle streamed input events as they occur
-                maybe_event = reader.next() => match maybe_event {
-                    Some(Ok(event)) => if ! self.handle_event(event) { break },
-                    // Event reader poll error, e.g. initialization failure, or interrupt
-                    Some(Err(e)) => bail!(e),
-                    // End of event stream
-                    None => break,
-                },
+        tokio::try_join!(
+            async {
+                // Drive application process futures, aborting in reaction to user request.
+                match do_work_abortable.await.ok() {
+                    Some(result) => result,
+                    // Swallow futures::future::Aborted error.
+                    None => Ok(()),
+                }
+            },
+            async {
+                // Handle events or wait for next render tick.
+                loop {
+                    tokio::select! {
+                        biased;
 
-                // Render every N milliseconds
-                _ = interval.tick() => self.render(state, &mut terminal).await?
+                        // Handle streamed input events as they occur
+                        maybe_event = reader.next() => match maybe_event {
+                            Some(Ok(event)) => if ! self.handle_event(event) { break },
+                            // Event reader poll error, e.g. initialization failure, or interrupt
+                            Some(Err(e)) => bail!(e),
+                            // End of event stream
+                            None => break,
+                        },
+
+                        // Note: We *might* also want to break out of the event loop
+                        //       as soon as `state.stage()` switches to `Stage::Done`.
+                        //       ...
+                        // TODO: Implement that? Or prefer keeping the app open
+                        //        until explicitly closed by the user? (Esc, Q or Ctrl+C)
+
+                        // Render every N milliseconds
+                        _ = interval.tick() => self.render(&state, &mut terminal).await?
+                    }
+                }
+
+                // Abort the application process futures as soon
+                // as the user requests the app to terminate.
+                abort_handle.abort();
+
+                Ok(())
             }
-        }
+        )?;
 
         self.release_terminal(terminal)?;
 

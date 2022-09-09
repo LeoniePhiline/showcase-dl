@@ -50,18 +50,21 @@ async fn extract_and_download(state: Arc<State>, url: &str) -> Result<()> {
     );
 
     info!("Fetch source page...");
-    state.set_fetching_source_page(url).await;
+    state.set_stage_fetching_source(url).await;
 
     let response_text = Client::new().get(page_url).send().await?.text().await?;
     debug!(page_response_text = ?response_text);
 
     info!("Extract vimeo embeds...");
-    state.set_processing_videos().await;
+    state.set_stage_processing().await;
 
     tokio::try_join!(
         process_showcases(&response_text, &referer, state.clone()),
         process_simple_embeds(&response_text, &referer, state.clone())
     )?;
+
+    state.set_stage_done().await;
+
     Ok(())
 }
 

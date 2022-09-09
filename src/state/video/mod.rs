@@ -11,22 +11,30 @@ use tokio::{
 };
 use tracing::debug;
 
-use self::progress::VideoProgress;
+use self::progress::ProgressDetail;
 
 pub mod progress;
 
-// TODO: Might `Cow` be of any help here? Can I use references for any of this?
 pub struct Video {
+    stage: RwLock<Stage>,
     url: String,
     referer: String,
     title: RwLock<Option<String>>,
     line: RwLock<Option<String>>,
+    last_percent: RwLock<Option<f64>>,
+}
+pub enum Stage {
+    Initializing,
+    Downloading,
+    Finished,
 }
 
 pub struct VideoRead<'a> {
+    stage: RwLockReadGuard<'a, Stage>,
     url: &'a str,
     title: RwLockReadGuard<'a, Option<String>>,
     line: RwLockReadGuard<'a, Option<String>>,
+    last_percent: RwLockReadGuard<'a, Option<f64>>,
 }
 
 impl Video {
@@ -40,11 +48,25 @@ impl Video {
         title: Option<String>,
     ) -> Self {
         Self {
+            stage: RwLock::new(Stage::Initializing),
             url: url.into(),
             referer: referer.into(),
             title: RwLock::new(title),
             line: RwLock::new(None),
+            last_percent: RwLock::new(None),
         }
+    }
+
+    pub async fn set_stage_downloading(&self) {
+        *self.stage.write().await = Stage::Downloading;
+    }
+
+    pub async fn set_stage_finished(&self) {
+        *self.stage.write().await = Stage::Finished;
+    }
+
+    pub async fn stage(&self) -> RwLockReadGuard<Stage> {
+        self.stage.read().await
     }
 
     pub fn url(&self) -> &str {
@@ -69,6 +91,23 @@ impl Video {
     }
 
     pub async fn update_line(&self, new_line: String) {
+        lazy_static! {
+            static ref RE: Regex =
+                Regex::new(r#"^\[download\]\s+(?P<percent>[\d+\.]+?)%"#,).unwrap();
+        }
+
+        // Extract current percent if present in the current line
+        let maybe_captures = RE.captures(&new_line);
+        if let Some(captures) = maybe_captures {
+            if let Some(percent) = captures
+                .name("percent")
+                .and_then(|percent_match| percent_match.as_str().parse::<f64>().ok())
+            {
+                self.update_last_percent(percent).await;
+            }
+        }
+
+        // Store the line to ref to it for size, speed and ETA ranges.
         let mut line = self.line.write().await;
         *line = Some(new_line);
     }
@@ -77,7 +116,18 @@ impl Video {
         self.line.read().await
     }
 
+    pub async fn update_last_percent(&self, new_percent: f64) {
+        let mut last_percent = self.last_percent.write().await;
+        *last_percent = Some(new_percent);
+    }
+
+    pub async fn last_percent(&self) -> RwLockReadGuard<Option<f64>> {
+        self.last_percent.read().await
+    }
+
     pub async fn download(self: Arc<Self>) -> Result<()> {
+        self.set_stage_downloading().await;
+
         debug!(
             "Spawn: yt-dlp --newline --no-colors --referer '{}' '{}'",
             &self.referer,
@@ -103,20 +153,22 @@ impl Video {
 
         // TODO: Distinguish video progress/state between living child process (downloading / processing) and ended child process ("Done!")
 
+        let video = self.clone();
         let process_pipe = tokio::spawn(async move {
             while let Some(next_line) = lines.next_line().await? {
-                self.use_title(|title| {
-                    debug!(
-                        "Line from '{}': '{next_line}'",
-                        match *title {
-                            Some(ref title) => title,
-                            None => self.url(),
-                        }
-                    )
-                })
-                .await;
+                video
+                    .use_title(|title| {
+                        debug!(
+                            "Line from '{}': '{next_line}'",
+                            match *title {
+                                Some(ref title) => title,
+                                None => video.url(),
+                            }
+                        )
+                    })
+                    .await;
 
-                self.update_line(next_line).await;
+                video.update_line(next_line).await;
             }
 
             Ok::<(), Report>(())
@@ -133,7 +185,7 @@ impl Video {
 
         tokio::try_join!(async { process_pipe.await? }, async { process_wait.await? },)?;
 
-        // TODO: Distinguish video progress/state between living child process (downloading / processing) and ended child process ("Done!")
+        self.set_stage_finished().await;
 
         Ok(())
     }
@@ -141,14 +193,20 @@ impl Video {
     // Acquire read guards for all fine-grained access-controlled fields.
     pub async fn read(&self) -> VideoRead {
         VideoRead {
+            stage: self.stage().await,
             url: &self.url,
             title: self.title().await,
             line: self.line().await,
+            last_percent: self.last_percent().await,
         }
     }
 }
 
 impl<'a> VideoRead<'a> {
+    pub fn stage(&self) -> &Stage {
+        &(*self.stage)
+    }
+
     pub fn url(&self) -> &'a str {
         self.url
     }
@@ -157,14 +215,12 @@ impl<'a> VideoRead<'a> {
         &(*self.title)
     }
 
-    // TODO: Should this be a method on the `VideoRead` struct impl instead of the `Video` struct impl?
-    //       We need to already have the line acquired anyway.
-    pub fn progress(&'a self) -> Option<VideoProgress<'a>> {
+    pub fn progress_detail(&'a self) -> Option<ProgressDetail<'a>> {
         lazy_static! {
             static ref RE: Regex = Regex::new(
                 // TODO: "Finished" looks like this: '[download] 100% of 956.44MiB in 00:15 at 63.00MiB/s'.
                 //       This is currently not parsed. Maybe there is no need to parse? -> Can show as `Progress::Raw(line)`.
-                r#"\[download\]\s+(?P<percent>[\d+\.]+?)% of (?P<size>~?[\d+\.]+?(?:[KMG]i)B)(?: at\s+(?P<speed>(?:~?[\d+\.]+?(?:[KMG]i)?|Unknown )B/s))?(?: ETA\s+(?P<eta>(?:[\d:-]+|Unknown)))?(?: \(frag (?P<frag>\d+)/(?P<frag_total>\d+)\))?"#,
+                r#"^\[download\]\s+(?P<percent>[\d+\.]+?)% of (?P<size>~?[\d+\.]+?(?:[KMG]i)B)(?: at\s+(?P<speed>(?:~?[\d+\.]+?(?:[KMG]i)?|Unknown )B/s))?(?: ETA\s+(?P<eta>(?:[\d:-]+|Unknown)))?(?: \(frag (?P<frag>\d+)/(?P<frag_total>\d+)\))?"#,
             ).unwrap();
         }
 
@@ -175,7 +231,9 @@ impl<'a> VideoRead<'a> {
                     Some(captures) => {
                         let percent = captures
                             .name("percent")
-                            .and_then(|percent_match| percent_match.as_str().parse::<f64>().ok());
+                            .and_then(|percent_match| percent_match.as_str().parse::<f64>().ok())
+                            // Fall back to last stored progress percentage if current line does not provide a fresh value.
+                            .or(*self.last_percent);
 
                         let size = captures.name("size").map(|size_match| size_match.range());
                         let speed = captures
@@ -190,7 +248,7 @@ impl<'a> VideoRead<'a> {
                         let frag_total = captures.name("frag_total").and_then(|frag_total_match| {
                             frag_total_match.as_str().parse::<u16>().ok()
                         });
-                        Some(VideoProgress::Parsed {
+                        Some(ProgressDetail::Parsed {
                             line,
                             percent,
                             size,
@@ -200,7 +258,7 @@ impl<'a> VideoRead<'a> {
                             frag_total,
                         })
                     }
-                    None => Some(VideoProgress::Raw(line)),
+                    None => Some(ProgressDetail::Raw(line)),
                 }
             }
             None => None,

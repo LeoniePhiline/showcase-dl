@@ -6,34 +6,40 @@ use self::video::Video;
 pub mod video;
 
 pub struct State {
-    progress: RwLock<Progress>,
+    stage: RwLock<Stage>,
     videos: RwLock<Vec<Arc<Video>>>,
 }
 
-pub enum Progress {
+pub enum Stage {
     Initializing,
-    FetchingSourcePage(String),
-    ProcessingVideos,
+    FetchingSource(String),
+    Processing,
+    // TODO: Semantic detail: Rename to `Finished` or keep at `Done`?
+    Done,
 }
 
 impl State {
     pub fn new() -> Self {
         Self {
-            progress: RwLock::new(Progress::Initializing),
+            stage: RwLock::new(Stage::Initializing),
             videos: RwLock::new(vec![]),
         }
     }
 
-    pub async fn set_fetching_source_page<'a>(&self, page_url: &'a str) {
-        *self.progress.write().await = Progress::FetchingSourcePage(page_url.to_string());
+    pub async fn set_stage_fetching_source<'a>(&self, page_url: impl Into<String>) {
+        *self.stage.write().await = Stage::FetchingSource(page_url.into());
     }
 
-    pub async fn set_processing_videos(&self) {
-        *self.progress.write().await = Progress::ProcessingVideos;
+    pub async fn set_stage_processing(&self) {
+        *self.stage.write().await = Stage::Processing;
     }
 
-    pub async fn progress(&self) -> RwLockReadGuard<Progress> {
-        self.progress.read().await
+    pub async fn set_stage_done(&self) {
+        *self.stage.write().await = Stage::Done;
+    }
+
+    pub async fn stage(&self) -> RwLockReadGuard<Stage> {
+        self.stage.read().await
     }
 
     pub async fn push_video(&self, video: Arc<Video>) {

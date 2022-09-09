@@ -1,5 +1,7 @@
 use tui::style::{Color, Modifier, Style};
 
+use crate::state::video::Stage;
+
 pub const SPACE_Y: u16 = 0;
 
 #[inline]
@@ -17,7 +19,7 @@ pub fn border_style() -> Style {
 #[inline]
 pub fn table_header_style() -> Style {
     Style::default()
-        .fg(Color::Yellow)
+        .fg(Color::White)
         .add_modifier(Modifier::BOLD)
 }
 
@@ -29,8 +31,23 @@ pub fn video_title_style() -> Style {
 }
 
 #[inline]
-pub fn gauge_style() -> Style {
+pub fn video_stage_style(video_stage: &Stage) -> Style {
     Style::default()
-        .fg(Color::LightGreen)
+        .fg(video_stage_color(video_stage))
         .add_modifier(Modifier::BOLD)
+}
+
+#[inline]
+pub fn gauge_style(video_stage: &Stage) -> Style {
+    Style::default()
+        .fg(video_stage_color(video_stage))
+        .add_modifier(Modifier::BOLD)
+}
+
+fn video_stage_color(video_stage: &Stage) -> Color {
+    match video_stage {
+        Stage::Initializing => Color::LightCyan,
+        Stage::Downloading => Color::LightYellow,
+        Stage::Finished => Color::LightGreen,
+    }
 }

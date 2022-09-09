@@ -17,8 +17,8 @@ pub fn layout_chunks(size: Rect, videos: &RwLockReadGuard<Vec<VideoRead>>) -> Ve
 fn layout_constraints(videos: &RwLockReadGuard<Vec<VideoRead>>) -> Vec<Constraint> {
     let mut video_constraints = Vec::with_capacity(videos.len()); // TODO: Instead of re-allocating, place this vec in Ui struct - and only adjust its length as needed?
 
-    // Application title block and table header
-    video_constraints.push(Constraint::Length(2));
+    // Application title block and table header, with bottom margin
+    video_constraints.push(Constraint::Length(3));
 
     // Video gauge blocks
     for _ in videos.iter() {

@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt::Display, ops::Range};
 
-pub enum VideoProgress<'a> {
+pub enum ProgressDetail<'a> {
     Raw(&'a str),
     Parsed {
         line: &'a str,
@@ -15,7 +15,7 @@ pub enum VideoProgress<'a> {
     },
 }
 
-impl<'a> VideoProgress<'a> {
+impl<'a> ProgressDetail<'a> {
     pub fn row(&self) -> Option<[Cow<'a, str>; 5]> {
         match self {
             Self::Raw(_) => None,
@@ -57,7 +57,7 @@ impl<'a> VideoProgress<'a> {
     }
 }
 
-impl<'a> Display for VideoProgress<'a> {
+impl<'a> Display for ProgressDetail<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Parsed {
@@ -89,7 +89,7 @@ impl<'a> Display for VideoProgress<'a> {
                     write!(f, ". ")?;
                 }
             }
-            VideoProgress::Raw(line) => write!(f, "{line}")?,
+            ProgressDetail::Raw(line) => write!(f, "{line}")?,
         }
 
         Ok(())

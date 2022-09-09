@@ -10,14 +10,14 @@ use tokio::{sync::RwLock, time::MissedTickBehavior};
 use tui::{
     backend::CrosstermBackend,
     layout::Alignment,
-    text::Span,
+    text::{Span, Spans},
     widgets::{Block, BorderType, Borders, Gauge, Paragraph, Row, Table},
     Terminal,
 };
 
 use crate::state::{
-    video::{progress::VideoProgress, VideoRead},
-    Progress, State,
+    video::{progress::ProgressDetail, Stage as VideoStage, VideoRead},
+    Stage, State,
 };
 
 mod layout;
@@ -129,12 +129,13 @@ impl Ui {
         // Acquire read to the videos vec, to block new videos from being added while rendering.
         let videos = state.videos().await;
 
-        let app_title = match *state.progress().await {
-            Progress::Initializing => Cow::Borrowed(" INITIALIZING ... "),
-            Progress::FetchingSourcePage(ref url) => {
+        let app_title = match *state.stage().await {
+            Stage::Initializing => Cow::Borrowed(" INITIALIZING ... "),
+            Stage::FetchingSource(ref url) => {
                 Cow::Owned(format!(" FETCHING SOURCE PAGE '{}' ... ", url))
             }
-            Progress::ProcessingVideos => Cow::Borrowed(" VIMEO SHOWCASE DOWNLOAD "),
+            Stage::Processing => Cow::Borrowed(" VIMEO SHOWCASE DOWNLOAD "),
+            Stage::Done => Cow::Borrowed(" FINISHED! "),
         };
 
         // Acquire read guards for all videos, to render full state.
@@ -181,21 +182,34 @@ impl Ui {
             );
 
             for (i, video) in (*videos_read).iter().enumerate() {
+                // TODO: Create a video widget?
+                // TODO: Create a scrollable(!) "list of videos" widget
+
                 let chunk_start = 1 + i * layout::CHUNKS_PER_VIDEO;
 
                 // Video title block
                 f.render_widget(
                     Block::default()
-                        .title(Span::styled(
-                            format!(
-                                "{} ",
-                                match video.title() {
-                                    Some(title) => title.as_str(),
-                                    None => video.url(),
-                                }
+                        .title(Spans::from(vec![
+                            Span::styled(
+                                match video.stage() {
+                                    VideoStage::Initializing => "Intializing...",
+                                    VideoStage::Downloading => "Downloading...",
+                                    VideoStage::Finished => "Finished!     ",
+                                },
+                                style::video_stage_style(video.stage()),
                             ),
-                            style::video_title_style(),
-                        ))
+                            Span::styled(
+                                format!(
+                                    " - {}",
+                                    match video.title() {
+                                        Some(title) => title.as_str(),
+                                        None => video.url(),
+                                    }
+                                ),
+                                style::video_title_style(),
+                            ),
+                        ]))
                         .borders(Borders::TOP)
                         .border_style(style::border_style())
                         .border_type(BorderType::Plain),
@@ -203,13 +217,13 @@ impl Ui {
                 );
 
                 // Video raw progress text or parsed progress
-                let maybe_progress = video.progress();
-                if let Some(progress) = &maybe_progress {
+                let maybe_progress_detail = video.progress_detail();
+                if let Some(progress) = &maybe_progress_detail {
                     match progress {
-                        VideoProgress::Raw(line) => {
+                        ProgressDetail::Raw(line) => {
                             f.render_widget(Paragraph::new(*line), chunks[chunk_start + 1])
                         }
-                        VideoProgress::Parsed { .. } => f.render_widget(
+                        ProgressDetail::Parsed { .. } => f.render_widget(
                             Table::new([Row::new(progress.row().unwrap())])
                                 .widths(&layout::video_progress_table_layout())
                                 .column_spacing(2),
@@ -220,10 +234,10 @@ impl Ui {
 
                 // Video progress bar
                 let gauge = Gauge::default()
-                    .gauge_style(style::gauge_style())
+                    .gauge_style(style::gauge_style(video.stage()))
                     .use_unicode(true);
-                let gauge = match &maybe_progress {
-                    Some(VideoProgress::Parsed { percent, .. }) => {
+                let gauge = match &maybe_progress_detail {
+                    Some(ProgressDetail::Parsed { percent, .. }) => {
                         gauge.ratio(percent.unwrap_or(0.0) / 100.0)
                     }
                     _ => gauge,

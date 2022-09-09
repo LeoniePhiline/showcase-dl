@@ -129,8 +129,6 @@ impl Ui {
     }
 
     fn handle_event(&self, event: Event) -> bool {
-        // TODO: Do I still want `clippy::match_like_matches_macro`?
-        #[allow(clippy::match_like_matches_macro)]
         match event {
             // Handle keyboard event: Exit on Esc, Q or Ctrl+C
             Event::Key(KeyEvent {
@@ -150,7 +148,7 @@ impl Ui {
             }) => false,
 
             // Handle other keyboard events later, e.g. to
-            // select list itemsor scroll in long tables
+            // select list items or scroll in long tables
             Event::Key(_) => true,
 
             // Mouse & Resize events

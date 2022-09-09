@@ -151,8 +151,6 @@ impl Video {
 
         let mut lines = BufReader::new(stdout).lines();
 
-        // TODO: Distinguish video progress/state between living child process (downloading / processing) and ended child process ("Done!")
-
         let video = self.clone();
         let process_pipe = tokio::spawn(async move {
             while let Some(next_line) = lines.next_line().await? {
@@ -218,8 +216,6 @@ impl<'a> VideoRead<'a> {
     pub fn progress_detail(&'a self) -> Option<ProgressDetail<'a>> {
         lazy_static! {
             static ref RE: Regex = Regex::new(
-                // TODO: "Finished" looks like this: '[download] 100% of 956.44MiB in 00:15 at 63.00MiB/s'.
-                //       This is currently not parsed. Maybe there is no need to parse? -> Can show as `Progress::Raw(line)`.
                 r#"^\[download\]\s+(?P<percent>[\d+\.]+?)% of (?P<size>~?[\d+\.]+?(?:[KMG]i)B)(?: at\s+(?P<speed>(?:~?[\d+\.]+?(?:[KMG]i)?|Unknown )B/s))?(?: ETA\s+(?P<eta>(?:[\d:-]+|Unknown)))?(?: \(frag (?P<frag>\d+)/(?P<frag_total>\d+)\))?"#,
             ).unwrap();
         }

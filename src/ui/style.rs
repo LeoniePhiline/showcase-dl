@@ -2,7 +2,7 @@ use tui::style::{Color, Modifier, Style};
 
 use crate::state::video::Stage;
 
-pub const SPACE_Y: u16 = 0;
+pub const SPACE_Y: u16 = 1;
 
 #[inline]
 pub fn application_title_style() -> Style {

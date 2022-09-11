@@ -193,6 +193,17 @@ impl Ui {
             })
             .await;
 
+        {
+            let mut videos_sort = videos_read.write().await;
+            (*videos_sort).sort_by_cached_key(|video_read| {
+                if let Some(title) = video_read.title() {
+                    title.to_string()
+                } else {
+                    video_read.url().to_string()
+                }
+            });
+        }
+
         // Acquire read on collected video read guards to render all in a sync(!) closure.
         let videos_read = (*videos_read).read().await;
 

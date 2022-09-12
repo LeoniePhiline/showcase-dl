@@ -37,21 +37,23 @@ fn layout_constraints(videos: &RwLockReadGuard<Vec<VideoRead>>) -> Vec<Constrain
     video_constraints
 }
 
-pub fn video_raw_progress_table_layout() -> [Constraint; 3] {
+pub fn video_raw_progress_table_layout() -> [Constraint; 4] {
     [
-        Constraint::Percentage(17),
-        Constraint::Percentage(16),
-        Constraint::Percentage(67), // = 17 + 17 + 16 + 17 (4-column span)
+        Constraint::Percentage(10),
+        Constraint::Percentage(10),
+        Constraint::Percentage(40), // 4-column span
+        Constraint::Percentage(40),
     ]
 }
 
-pub fn video_progress_detail_table_layout() -> [Constraint; 6] {
+pub fn video_progress_detail_table_layout() -> [Constraint; 7] {
     [
-        Constraint::Percentage(17),
-        Constraint::Percentage(16),
-        Constraint::Percentage(17),
-        Constraint::Percentage(17),
-        Constraint::Percentage(16),
-        Constraint::Percentage(17),
+        Constraint::Percentage(10),
+        Constraint::Percentage(10),
+        Constraint::Percentage(10),
+        Constraint::Percentage(10),
+        Constraint::Percentage(10),
+        Constraint::Percentage(10),
+        Constraint::Percentage(40),
     ]
 }

@@ -215,9 +215,17 @@ impl Ui {
             f.render_widget(
                 Table::new([])
                     .header(
-                        Row::new(["Stage", "Progress", "Size", "Speed", "ETA", "Fragments"])
-                            .style(style::table_header_style())
-                            .bottom_margin(1),
+                        Row::new([
+                            "Stage",
+                            "Progress",
+                            "Size",
+                            "Speed",
+                            "ETA",
+                            "Fragments",
+                            "Destination",
+                        ])
+                        .style(style::table_header_style())
+                        .bottom_margin(1),
                     )
                     .widths(&layout::video_progress_detail_table_layout())
                     .column_spacing(2)
@@ -260,16 +268,16 @@ impl Ui {
                 // Video raw progress text or parsed progress
                 let progress_detail_chunk = chunks[chunk_start + 1];
                 let display_percent = video
-                    .last_percent()
-                    .unwrap_or_else(|| Self::video_percent_default(video.stage()));
+                    .percent_done()
+                    .unwrap_or_else(|| Self::video_percent_done_default(video.stage()));
                 let maybe_progress_detail = video.progress_detail();
                 if let Some(progress) = &maybe_progress_detail {
                     // Build two variants of details table, depending on if we have a
                     // `ProgressDetail::Raw(line)`, rendered as basics + unparsed `yt-dlp` output line,
                     //  or a `ProgressDetail::Parsed { .. }`, rendered as full table of download stats.
                     let mut row = Vec::with_capacity(match progress {
-                        ProgressDetail::Raw(_) => 3,
-                        ProgressDetail::Parsed { .. } => 6,
+                        ProgressDetail::Raw(_) => 4,
+                        ProgressDetail::Parsed { .. } => 7,
                     });
 
                     // Column "Stage"
@@ -298,6 +306,12 @@ impl Ui {
                                 _ => *line,
                             }));
 
+                            // Column "Destination"
+                            row.push(Span::raw(match video.output_file().as_ref() {
+                                Some(output_file) => output_file.as_str(),
+                                None => "",
+                            }));
+
                             f.render_widget(
                                 Table::new([Row::new(row)])
                                     .widths(&layout::video_raw_progress_table_layout())
@@ -318,6 +332,12 @@ impl Ui {
                                     .map(Span::raw)
                                     .collect::<Vec<Span>>(),
                             );
+
+                            // Column "Destination"
+                            row.push(Span::raw(match video.output_file().as_ref() {
+                                Some(output_file) => output_file.as_str(),
+                                None => "",
+                            }));
 
                             f.render_widget(
                                 Table::new([Row::new(row)])
@@ -345,10 +365,10 @@ impl Ui {
         Ok(())
     }
 
-    fn video_percent_default(stage: &VideoStage) -> f64 {
+    fn video_percent_done_default(stage: &VideoStage) -> f64 {
         match stage {
             // When a video is already present before starting the app,
-            // then this video will be finished without `video.last_percent`
+            // then this video will be finished without `video.percent_done`
             // ever having been set. In that case, display 100 % right away.
             VideoStage::Finished => 100.0,
             _ => 0.0,

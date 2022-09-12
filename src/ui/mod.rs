@@ -218,11 +218,11 @@ impl Ui {
                         Row::new([
                             "Stage",
                             "Progress",
+                            "Destination",
                             "Size",
                             "Speed",
                             "ETA",
                             "Fragments",
-                            "Destination",
                         ])
                         .style(style::table_header_style())
                         .bottom_margin(1),
@@ -294,6 +294,12 @@ impl Ui {
                     // as a fresh value can not in all cases be parsed from the current line.
                     row.push(Span::raw(format!("{:.1} %", display_percent)));
 
+                    // Column "Destination"
+                    row.push(Span::raw(match video.output_file().as_ref() {
+                        Some(output_file) => output_file.as_str(),
+                        None => "",
+                    }));
+
                     match progress {
                         ProgressDetail::Raw(line) => {
                             // Single column, spanning across "Size", "Speed", "ETA" and "Fragments"
@@ -304,12 +310,6 @@ impl Ui {
                                 VideoStage::Finished => "",
                                 // Display the last raw output line as long as video progress is not yet finished.
                                 _ => *line,
-                            }));
-
-                            // Column "Destination"
-                            row.push(Span::raw(match video.output_file().as_ref() {
-                                Some(output_file) => output_file.as_str(),
-                                None => "",
                             }));
 
                             f.render_widget(
@@ -332,12 +332,6 @@ impl Ui {
                                     .map(Span::raw)
                                     .collect::<Vec<Span>>(),
                             );
-
-                            // Column "Destination"
-                            row.push(Span::raw(match video.output_file().as_ref() {
-                                Some(output_file) => output_file.as_str(),
-                                None => "",
-                            }));
 
                             f.render_widget(
                                 Table::new([Row::new(row)])

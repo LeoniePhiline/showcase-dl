@@ -41,8 +41,8 @@ pub fn video_raw_progress_table_layout() -> [Constraint; 4] {
     [
         Constraint::Percentage(10),
         Constraint::Percentage(10),
-        Constraint::Percentage(40), // 4-column span
         Constraint::Percentage(40),
+        Constraint::Percentage(40), // 4-column span
     ]
 }
 
@@ -50,10 +50,10 @@ pub fn video_progress_detail_table_layout() -> [Constraint; 7] {
     [
         Constraint::Percentage(10),
         Constraint::Percentage(10),
-        Constraint::Percentage(10),
-        Constraint::Percentage(10),
-        Constraint::Percentage(10),
-        Constraint::Percentage(10),
         Constraint::Percentage(40),
+        Constraint::Percentage(10),
+        Constraint::Percentage(10),
+        Constraint::Percentage(10),
+        Constraint::Percentage(10),
     ]
 }

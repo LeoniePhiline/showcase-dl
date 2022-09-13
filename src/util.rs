@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use color_eyre::{eyre::Result, Report};
 use reqwest::{header::HeaderValue, Client, Url};
+use tokio::task::JoinHandle;
 use tracing::debug;
 
 pub async fn fetch_with_referer(url: &str, referer: &str) -> Result<String> {
@@ -25,4 +26,11 @@ pub async fn fetch_with_referer(url: &str, referer: &str) -> Result<String> {
         Ok::<String, Report>(response_text)
     })
     .await?
+}
+
+#[inline]
+pub async fn maybe_join(maybe_spawned: Option<JoinHandle<Result<()>>>) -> Result<()> {
+    maybe_spawned.map(|join: JoinHandle<Result<()>>| async { join.await? });
+
+    Ok(())
 }

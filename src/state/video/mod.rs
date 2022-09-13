@@ -1,15 +1,19 @@
 use color_eyre::{
-    eyre::{eyre, Result, WrapErr},
+    eyre::{Result, WrapErr},
     Report,
 };
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{process::Stdio, sync::Arc};
+use std::{path::Path, process::Stdio, sync::Arc};
 use tokio::{
-    io::{AsyncBufReadExt, BufReader},
+    io::{AsyncBufReadExt, AsyncRead, BufReader},
+    process::{Child, Command},
     sync::{RwLock, RwLockReadGuard},
+    task::JoinHandle,
 };
 use tracing::debug;
+
+use crate::util::maybe_join;
 
 use self::progress::ProgressDetail;
 
@@ -27,6 +31,7 @@ pub struct Video {
 pub enum Stage {
     Initializing,
     Downloading,
+    ExtractingAudio,
     Finished,
 }
 
@@ -62,6 +67,10 @@ impl Video {
 
     pub async fn set_stage_downloading(&self) {
         *self.stage.write().await = Stage::Downloading;
+    }
+
+    pub async fn set_stage_extracting_audio(&self) {
+        *self.stage.write().await = Stage::ExtractingAudio;
     }
 
     pub async fn set_stage_finished(&self) {
@@ -175,34 +184,113 @@ impl Video {
     pub async fn download(self: Arc<Self>) -> Result<()> {
         self.set_stage_downloading().await;
 
-        debug!(
-            "Spawn: yt-dlp --newline --no-colors --referer '{}' '{}'",
+        let cmd = format!(
+            "yt-dlp --newline --no-colors --referer '{}' '{}'",
             &self.referer,
             self.url()
         );
-        let mut child = tokio::process::Command::new("yt-dlp")
-            .kill_on_drop(true)
-            .stdout(Stdio::piped())
-            .arg("--newline")
-            .arg("--no-colors")
-            .arg("--referer")
-            .arg(&self.referer)
-            .arg(self.url())
-            .spawn()
-            .wrap_err("yt-dlp command failed to start")?;
 
-        let stdout = child.stdout.take().ok_or_else(|| {
-            eyre!(
-                "Child's stdout was None (yt-dlp --newline --no-colors --referer '{}' '{}')",
-                &self.referer,
-                self.url()
+        debug!("Spawn: {cmd}");
+        self.clone()
+            .child_read_to_end(
+                Command::new("yt-dlp")
+                    .kill_on_drop(true)
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .arg("--newline")
+                    .arg("--no-colors")
+                    .arg("--referer")
+                    .arg(&self.referer)
+                    .arg(self.url())
+                    .spawn()
+                    .wrap_err_with(|| "Command failed to start ({cmd})")?,
             )
-        })?;
+            .await?;
 
-        let mut lines = BufReader::new(stdout).lines();
+        self.set_stage_finished().await;
 
-        let video = self.clone();
-        let process_pipe = tokio::spawn(async move {
+        Ok(())
+    }
+
+    pub async fn extract_audio(self: Arc<Self>, format: &str) -> Result<()> {
+        if let Some(ref output_file) = *self.output_file().await {
+            self.set_stage_extracting_audio().await;
+
+            let source = Path::new(output_file);
+            let destination = Path::new(output_file).with_extension(format);
+
+            let cmd = format!(
+                "ffmpeg -y -i '{}' '{}'",
+                source.to_string_lossy(),
+                destination.to_string_lossy()
+            );
+
+            debug!("Spawn: {cmd}");
+            self.clone()
+                .child_read_to_end(
+                    Command::new("ffmpeg")
+                        .kill_on_drop(true)
+                        .stdout(Stdio::piped())
+                        .stderr(Stdio::piped())
+                        .arg("-i")
+                        .arg(&source)
+                        .arg(&destination)
+                        .spawn()
+                        .wrap_err_with(|| "Command failed to start ({cmd})")?,
+                )
+                .await?;
+
+            self.set_stage_finished().await;
+
+            // TODO: Set stage finished
+        }
+
+        Ok(())
+    }
+
+    async fn child_read_to_end(self: Arc<Self>, mut child: Child) -> Result<()> {
+        let consume_stdout = child
+            .stdout
+            .take()
+            .map(|stdout| self.clone().consume_stream(stdout));
+
+        let consume_stderr = child
+            .stderr
+            .take()
+            .map(|stderr| self.clone().consume_stream(stderr));
+
+        let await_exit = async {
+            tokio::spawn(async move {
+                child
+                    .wait()
+                    .await
+                    .wrap_err("yt-dlp command failed to run")?;
+
+                Ok::<(), Report>(())
+            })
+            .await??;
+
+            Ok(())
+        };
+
+        tokio::try_join!(
+            maybe_join(consume_stdout),
+            maybe_join(consume_stderr),
+            await_exit,
+        )
+        .wrap_err("Could not join child consumers for stdout, stderr and awaiting child exit.")?;
+
+        Ok(())
+    }
+
+    fn consume_stream<A: AsyncRead + Unpin + Send + 'static>(
+        self: Arc<Self>,
+        reader: A,
+    ) -> JoinHandle<Result<()>> {
+        let mut lines = BufReader::new(reader).lines();
+
+        let video = self;
+        tokio::spawn(async move {
             while let Some(next_line) = lines.next_line().await? {
                 video
                     .use_title(|title| {
@@ -220,22 +308,7 @@ impl Video {
             }
 
             Ok::<(), Report>(())
-        });
-
-        let process_wait = tokio::spawn(async move {
-            child
-                .wait()
-                .await
-                .wrap_err("yt-dlp command failed to run")?;
-
-            Ok::<(), Report>(())
-        });
-
-        tokio::try_join!(async { process_pipe.await? }, async { process_wait.await? },)?;
-
-        self.set_stage_finished().await;
-
-        Ok(())
+        })
     }
 
     // Acquire read guards for all fine-grained access-controlled fields.

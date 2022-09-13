@@ -105,8 +105,16 @@ async fn process_simple_embeds(page_body: &str, referer: &str, state: Arc<State>
                             async {
                                 let video = video.clone();
                                 tokio::spawn(async move {
-                                    info!("Download simple embed '{}'...", video.url());
-                                    video.download().await?;
+                                    let url = video.url();
+                                    info!("Download simple embed '{url}'...", );
+                                    video.clone().download().await?;
+
+                                    info!("Extract opus audio for simple embed '{url}'...");
+                                    video.clone().extract_audio("opus").await?;
+
+                                    info!("Extract mp3 audio for simple embed '{url}'...");
+                                    video.extract_audio("mp3").await?;
+
                                     Ok::<(), Report>(())
                                 })
                                 .await?
@@ -254,15 +262,23 @@ async fn process_showcase_clip(clip: &Value, referer: &str, state: Arc<State>) -
             debug!("embed_url_match: {embed_url_match:#?}");
 
             let embed_url = html_escape::decode_html_entities(embed_url_match.as_str());
-            info!("Download showcase clip '{embed_url}'...");
 
             let video = Arc::new(Video::new_with_title(
-                embed_url,
+                &*embed_url,
                 referer,
                 config.dot_get::<String>("video.title")?, // maybe_title
             ));
             (*state).push_video(video.clone()).await;
-            video.download().await?;
+
+            info!("Download showcase clip '{embed_url}'...");
+            video.clone().download().await?;
+
+            info!("Extract opus audio for showcase clip '{embed_url}'...");
+            video.clone().extract_audio("opus").await?;
+
+
+            info!("Extract mp3 audio for showcase clip '{embed_url}'...");
+            video.extract_audio("mp3").await?;
         }
         None => {
             bail!("Could not extract embed URL from config 'video.embed_code' string (embed_url not captured)");

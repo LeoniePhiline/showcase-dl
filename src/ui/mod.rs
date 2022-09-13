@@ -285,6 +285,7 @@ impl Ui {
                         match video.stage() {
                             VideoStage::Initializing => "Intializing...",
                             VideoStage::Downloading => "Downloading...",
+                            VideoStage::ExtractingAudio => "Extracting audio...",
                             VideoStage::Finished => "Finished!",
                         },
                         style::video_stage_style(video.stage()),

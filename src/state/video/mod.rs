@@ -227,11 +227,17 @@ impl Video {
 
             debug!("Spawn: {cmd}");
             self.clone()
+                // TODO: Need a different read strategy. `-progress pipe:1` gives multi-line progress reports each second.
+                //       These need to be parsed or appended somehow to form a line.
+                //       Alternatively, if we work without
                 .child_read_to_end(
                     Command::new("ffmpeg")
                         .kill_on_drop(true)
                         .stdout(Stdio::piped())
                         .stderr(Stdio::piped())
+                        .arg("-nostdin")
+                        // TODO: Make audio extraction overwriting of existing files depend on argument
+                        .arg("-y")
                         .arg("-i")
                         .arg(&source)
                         .arg(&destination)
@@ -241,8 +247,6 @@ impl Video {
                 .await?;
 
             self.set_stage_finished().await;
-
-            // TODO: Set stage finished
         }
 
         Ok(())

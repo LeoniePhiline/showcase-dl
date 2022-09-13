@@ -5,6 +5,7 @@ use reqwest::{header::HeaderValue, Client, Url};
 use tokio::task::JoinHandle;
 use tracing::debug;
 
+// Fetch a URL, applying a referer header
 pub async fn fetch_with_referer(url: &str, referer: &str) -> Result<String> {
     let referer_header_value = HeaderValue::from_str(referer)?;
     let url = Url::from_str(url)?;
@@ -28,6 +29,7 @@ pub async fn fetch_with_referer(url: &str, referer: &str) -> Result<String> {
     .await?
 }
 
+// Await the `JoinHandle` if the given `Option` is `Some(_)`
 #[inline]
 pub async fn maybe_join(maybe_spawned: Option<JoinHandle<Result<()>>>) -> Result<()> {
     maybe_spawned.map(|join: JoinHandle<Result<()>>| async { join.await? });

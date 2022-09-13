@@ -365,6 +365,7 @@ impl Ui {
             // When a video is already present before starting the app,
             // then this video will be finished without `video.percent_done`
             // ever having been set. In that case, display 100 % right away.
+            VideoStage::ExtractingAudio => 100.0,
             VideoStage::Finished => 100.0,
             _ => 0.0,
         }

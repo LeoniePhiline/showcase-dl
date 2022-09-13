@@ -106,12 +106,14 @@ async fn process_simple_embeds(page_body: &str, referer: &str, state: Arc<State>
                                 let video = video.clone();
                                 tokio::spawn(async move {
                                     let url = video.url();
-                                    info!("Download simple embed '{url}'...", );
+                                    info!("Download simple embed '{url}'...");
                                     video.clone().download().await?;
 
+                                    // TODO: Make audio extraction depend on argument
                                     info!("Extract opus audio for simple embed '{url}'...");
                                     video.clone().extract_audio("opus").await?;
 
+                                    // TODO: Make audio extraction depend on argument
                                     info!("Extract mp3 audio for simple embed '{url}'...");
                                     video.extract_audio("mp3").await?;
 
@@ -273,10 +275,11 @@ async fn process_showcase_clip(clip: &Value, referer: &str, state: Arc<State>) -
             info!("Download showcase clip '{embed_url}'...");
             video.clone().download().await?;
 
+            // TODO: Make audio extraction depend on argument
             info!("Extract opus audio for showcase clip '{embed_url}'...");
             video.clone().extract_audio("opus").await?;
 
-
+            // TODO: Make audio extraction depend on argument
             info!("Extract mp3 audio for showcase clip '{embed_url}'...");
             video.extract_audio("mp3").await?;
         }

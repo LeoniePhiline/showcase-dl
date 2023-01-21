@@ -72,7 +72,7 @@ async fn extract_and_download(state: Arc<State>, url: &str) -> Result<()> {
 async fn process_simple_embeds(page_body: &str, referer: &str, state: Arc<State>) -> Result<()> {
     lazy_static! {
         static ref RE: Regex = Regex::new(
-            r#"<iframe[^>]+ src="(?P<embed_url>https://player\.vimeo\.com/video/[^"]+)""#
+            r#"<iframe[^>]* src="(?P<embed_url>https://player\.vimeo\.com/video/[^"]+)""#
         )
         .unwrap();
     }
@@ -160,7 +160,7 @@ async fn extract_simple_embed_title(video: Arc<Video>, referer: &str) -> Result<
 async fn process_showcases(page_body: &str, referer: &str, state: Arc<State>) -> Result<()> {
     lazy_static! {
         static ref RE: Regex =
-            Regex::new(r#"<iframe[^>]+ src="(?P<embed_url>https://vimeo\.com/showcase/[^"]+)""#)
+            Regex::new(r#"<iframe[^>]* src="(?P<embed_url>https://vimeo\.com/showcase/[^"]+)""#)
                 .unwrap();
     }
 

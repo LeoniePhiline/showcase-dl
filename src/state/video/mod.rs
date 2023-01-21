@@ -90,7 +90,7 @@ impl Video {
         F: FnOnce(&Option<String>) -> O,
     {
         let title = self.title.read().await;
-        f(&*title)
+        f(&title)
     }
 
     pub async fn update_title(&self, new_title: String) {
@@ -239,7 +239,7 @@ impl Video {
                         // TODO: Make audio extraction overwriting of existing files depend on argument
                         .arg("-y")
                         .arg("-i")
-                        .arg(&source)
+                        .arg(source)
                         .arg(&destination)
                         .spawn()
                         .wrap_err_with(|| "Command failed to start ({cmd})")?,
@@ -330,7 +330,7 @@ impl Video {
 
 impl<'a> VideoRead<'a> {
     pub fn stage(&self) -> &Stage {
-        &(*self.stage)
+        &self.stage
     }
 
     pub fn url(&self) -> &'a str {
@@ -338,7 +338,7 @@ impl<'a> VideoRead<'a> {
     }
 
     pub fn title(&self) -> &Option<String> {
-        &(*self.title)
+        &self.title
     }
 
     pub fn progress_detail(&'a self) -> Option<ProgressDetail<'a>> {
@@ -390,10 +390,10 @@ impl<'a> VideoRead<'a> {
     }
 
     pub fn output_file(&self) -> &Option<String> {
-        &(*self.output_file)
+        &self.output_file
     }
 
     pub fn percent_done(&self) -> &Option<f64> {
-        &(*self.percent_done)
+        &self.percent_done
     }
 }

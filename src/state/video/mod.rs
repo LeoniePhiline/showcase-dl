@@ -344,7 +344,7 @@ impl<'a> VideoRead<'a> {
     pub fn progress_detail(&'a self) -> Option<ProgressDetail<'a>> {
         lazy_static! {
             static ref RE: Regex = Regex::new(
-                r#"^\[download\]\s+(?P<percent>[\d+\.]+?)% of (?P<size>~?[\d+\.]+?(?:[KMG]i)B)(?: at\s+(?P<speed>(?:~?[\d+\.]+?(?:[KMG]i)?|Unknown )B/s))?(?: ETA\s+(?P<eta>(?:[\d:-]+|Unknown)))?(?: \(frag (?P<frag>\d+)/(?P<frag_total>\d+)\))?"#,
+                r#"^\[download\]\s+(?P<percent>[\d+\.]+?)% of (?P<size>(?:~\s*)?[\d+\.]+?(?:[KMG]i)B)(?: at\s+(?P<speed>(?:(?:~\s*)?[\d+\.]+?(?:[KMG]i)?|Unknown )B/s))?(?: ETA\s+(?P<eta>(?:[\d:-]+|Unknown)))?(?: \(frag (?P<frag>\d+)/(?P<frag_total>\d+)\))?"#,
             ).unwrap();
         }
 

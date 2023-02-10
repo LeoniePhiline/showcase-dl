@@ -17,11 +17,17 @@ _(none)_
 
 ### Fixed
 
-- Progress detail extraction failed in rare cases.
+_(none)_
 
 ### Removed
 
 _(none)_
+
+## [0.5.1] - 2023-02-10
+
+### Fixed
+
+- Progress detail extraction failed in rare cases.
 
 ## [0.5.0] - 2023-02-10
 
@@ -92,7 +98,8 @@ _(none)_
 
 - Initial implementation.
 
-[unreleased]: https://github.com/LeoniePhiline/showcase-dl/compare/0.5.0...HEAD
+[unreleased]: https://github.com/LeoniePhiline/showcase-dl/compare/0.5.1...HEAD
+[0.5.1]: https://github.com/LeoniePhiline/showcase-dl/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/LeoniePhiline/showcase-dl/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/LeoniePhiline/showcase-dl/compare/0.3.2...0.4.0
 [0.3.2]: https://github.com/LeoniePhiline/showcase-dl/compare/0.3.1...0.3.2

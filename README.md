@@ -37,7 +37,20 @@ After all downloads have finished, the app will remain open. This way, you can j
 
 Using the verbosity flag, you can observe runtime information being written to `vimeo-showcase.log`.
 
-Use `-v` for warnings, `-vv` for info, `-vvv` for debug and `-vvvv` for trace, the highest log level.
+Errors are always reported.
+
+Use more `-v[v[v[v]]]` for more verbosity:
+
+- `-v` is `warn`.
+- `-vv` is `info`. 
+- `-vvv` is `debug`.
+- `-vvvv` is `trace`.
+
+Use a split terminal, or a separate terminal window, to observe the live messges with (Linux, Mac):
+
+```
+tail -f vimeo-showcase.log
+```
 
 ### Custom downloader
 

@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
     let ui = Ui::new();
 
     ui.event_loop(state.clone(), args.tick, async move {
-        extract_and_download(state, &args.url).await?;
+        extract_and_download(state, &args.url, &args.bin).await?;
         Ok::<(), Report>(())
     })
     .await?;
@@ -40,7 +40,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn extract_and_download(state: Arc<State>, url: &str) -> Result<()> {
+async fn extract_and_download(state: Arc<State>, url: &str, bin: &str) -> Result<()> {
     let page_url = Url::parse(url)?;
     debug!("Parsed page URL: {page_url:#?}");
 
@@ -60,8 +60,8 @@ async fn extract_and_download(state: Arc<State>, url: &str) -> Result<()> {
     state.set_stage_processing().await;
 
     tokio::try_join!(
-        process_showcases(&response_text, &referer, state.clone()),
-        process_simple_embeds(&response_text, &referer, state.clone())
+        process_showcases(&response_text, &referer, bin, state.clone()),
+        process_simple_embeds(&response_text, &referer, bin, state.clone())
     )?;
 
     state.set_stage_done().await;
@@ -69,7 +69,12 @@ async fn extract_and_download(state: Arc<State>, url: &str) -> Result<()> {
     Ok(())
 }
 
-async fn process_simple_embeds(page_body: &str, referer: &str, state: Arc<State>) -> Result<()> {
+async fn process_simple_embeds(
+    page_body: &str,
+    referer: &str,
+    bin: &str,
+    state: Arc<State>,
+) -> Result<()> {
     lazy_static! {
         static ref RE: Regex = Regex::new(
             r#"<iframe[^>]* src="(?P<embed_url>https://player\.vimeo\.com/video/[^"]+)""#
@@ -104,10 +109,11 @@ async fn process_simple_embeds(page_body: &str, referer: &str, state: Arc<State>
                             },
                             async {
                                 let video = video.clone();
+                                let bin = bin.to_owned();
                                 tokio::spawn(async move {
                                     let url = video.url();
                                     info!("Download simple embed '{url}'...");
-                                    video.clone().download().await?;
+                                    video.clone().download(&bin).await?;
 
                                     // TODO: Make audio extraction depend on argument
                                     info!("Extract opus audio for simple embed '{url}'...");
@@ -157,7 +163,12 @@ async fn extract_simple_embed_title(video: Arc<Video>, referer: &str) -> Result<
     Ok(())
 }
 
-async fn process_showcases(page_body: &str, referer: &str, state: Arc<State>) -> Result<()> {
+async fn process_showcases(
+    page_body: &str,
+    referer: &str,
+    bin: &str,
+    state: Arc<State>,
+) -> Result<()> {
     lazy_static! {
         static ref RE: Regex =
             Regex::new(r#"<iframe[^>]* src="(?P<embed_url>https://vimeo\.com/showcase/[^"]+)""#)
@@ -175,7 +186,7 @@ async fn process_showcases(page_body: &str, referer: &str, state: Arc<State>) ->
                     Some(embed_url_match) => {
                         let embed_url = embed_url_match.as_str();
                         info!("Extract clips from showcase '{embed_url}'...");
-                        process_showcase_embed(embed_url, referer, state).await
+                        process_showcase_embed(embed_url, referer, bin, state).await
                     }
                     None => bail!("Capture group did not match named 'embed_url'"),
                 }
@@ -186,7 +197,12 @@ async fn process_showcases(page_body: &str, referer: &str, state: Arc<State>) ->
     Ok(())
 }
 
-async fn process_showcase_embed(embed_url: &str, referer: &str, state: Arc<State>) -> Result<()> {
+async fn process_showcase_embed(
+    embed_url: &str,
+    referer: &str,
+    bin: &str,
+    state: Arc<State>,
+) -> Result<()> {
     let response_text = util::fetch_with_referer(embed_url, referer).await?;
 
     let app_data_line = response_text
@@ -218,18 +234,21 @@ async fn process_showcase_embed(embed_url: &str, referer: &str, state: Arc<State
         .try_for_each_concurrent(None, |clip| async {
             let state = state.clone();
             let referer = referer.to_owned();
-            async move {
-                tokio::spawn(async move { process_showcase_clip(&clip, &referer, state).await })
-                    .await?
-            }
-            .await
+            let bin = bin.to_owned();
+            tokio::spawn(async move { process_showcase_clip(&clip, &referer, &bin, state).await })
+                .await?
         })
         .await?;
 
     Ok(())
 }
 
-async fn process_showcase_clip(clip: &Value, referer: &str, state: Arc<State>) -> Result<()> {
+async fn process_showcase_clip(
+    clip: &Value,
+    referer: &str,
+    bin: &str,
+    state: Arc<State>,
+) -> Result<()> {
     let config_url = clip
         .dot_get::<String>("config")?
         .ok_or_else(|| eyre!("Could not read clip config URL from 'app-data.clips.[].config'."))?;
@@ -273,7 +292,7 @@ async fn process_showcase_clip(clip: &Value, referer: &str, state: Arc<State>) -
             (*state).push_video(video.clone()).await;
 
             info!("Download showcase clip '{embed_url}'...");
-            video.clone().download().await?;
+            video.clone().download(bin).await?;
 
             // TODO: Make audio extraction depend on argument
             info!("Extract opus audio for showcase clip '{embed_url}'...");

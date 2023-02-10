@@ -31,6 +31,16 @@ As long as you do not close the app ahead of time, your videos will be downloade
 
 After all downloads have finished, the app will remain open. This way, you can just go do other stuff, and come back to a nice status overview. Close the app with the `Q` or `Esc` key, or the combination `Ctrl+C`.
 
+## Debugging
+
+### Custom downloader
+
+To use a custom version of `yt-dlp` or `youtube-dl`, pass the path to it via the `--bin` option, e.g.:
+
+```
+./target/release/showcase-dl --bin /path/to/yt-dlp/yt-dlp.sh -vvv <URL>  
+```
+
 ## Credentials
 This little tool is standing on the shoulders of giants.
 

@@ -181,11 +181,12 @@ impl Video {
         self.output_file.read().await
     }
 
-    pub async fn download(self: Arc<Self>) -> Result<()> {
+    pub async fn download(self: Arc<Self>, bin: &str) -> Result<()> {
         self.set_stage_downloading().await;
 
         let cmd = format!(
-            "yt-dlp --newline --no-colors --referer '{}' '{}'",
+            "{} --newline --no-colors --referer '{}' '{}'",
+            bin,
             &self.referer,
             self.url()
         );

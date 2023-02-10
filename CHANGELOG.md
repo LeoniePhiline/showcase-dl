@@ -17,7 +17,7 @@ _(none)_
 
 ### Fixed
 
-_(none)_
+- Progress detail extraction failed in rare cases.
 
 ### Removed
 

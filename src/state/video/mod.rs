@@ -194,7 +194,7 @@ impl Video {
         debug!("Spawn: {cmd}");
         self.clone()
             .child_read_to_end(
-                Command::new("yt-dlp")
+                Command::new(bin)
                     .kill_on_drop(true)
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())

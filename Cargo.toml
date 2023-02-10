@@ -9,7 +9,7 @@ edition = "2021"
 clap = { version = "4.1.1", features = ["derive", "wrap_help"] }
 clap-verbosity-flag = "2.0.0"
 color-eyre = "0.6.2"
-crossterm = { version = "0.25.0", features = ["event-stream"] }
+crossterm = { version = "0.26.0", features = ["event-stream"] }
 futures = "0.3.24"
 html-escape = "0.2.11"
 json_dotpath = "1.1.0"

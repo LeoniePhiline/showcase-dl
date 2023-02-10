@@ -33,6 +33,12 @@ After all downloads have finished, the app will remain open. This way, you can j
 
 ## Debugging
 
+### Logging
+
+Using the verbosity flag, you can observe runtime information being written to `vimeo-showcase.log`.
+
+Use `-v` for warnings, `-vv` for info, `-vvv` for debug and `-vvvv` for trace, the highest log level.
+
 ### Custom downloader
 
 To use a custom version of `yt-dlp` or `youtube-dl`, pass the path to it via the `--bin` option, e.g.:

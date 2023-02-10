@@ -1,4 +1,5 @@
 use color_eyre::eyre::{eyre, Result};
+use tracing_appender::non_blocking::WorkerGuard;
 
 use std::ops::Deref;
 
@@ -6,18 +7,20 @@ use clap_verbosity_flag::Verbosity;
 
 use crate::args::Args;
 
-pub fn init(args: &Args) -> Result<()> {
-    // TODO: Configure log (file, ...)
-    // TODO: Log into a buffer and display that
+pub fn init(args: &Args) -> Result<WorkerGuard> {
+    // TODO: Log into a buffer and display that in a bottom split pane.
+    let file_appender = tracing_appender::rolling::never(".", "vimeo-showcase.log");
+    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
     tracing_subscriber::fmt()
         .pretty()
         .with_thread_names(true)
         .with_line_number(true)
         .with_max_level(*IntoLevelFilter::from(&args.verbosity))
+        .with_writer(non_blocking)
         .try_init()
         .map_err(|_| eyre!("Tracing initialization failed"))?;
 
-    Ok(())
+    Ok(guard)
 }
 
 pub struct IntoLevelFilter(Option<tracing::Level>);

@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
 
     let args = args::parse();
 
-    trace::init(&args)?;
+    let _appender_guard = trace::init(&args)?;
 
     let state = Arc::new(State::new());
     let ui = Ui::new();

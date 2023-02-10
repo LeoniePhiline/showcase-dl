@@ -11,7 +11,7 @@ use tokio::{
     sync::{RwLock, RwLockReadGuard},
     task::JoinHandle,
 };
-use tracing::debug;
+use tracing::{debug, error};
 
 use crate::util::maybe_join;
 
@@ -299,13 +299,15 @@ impl Video {
             while let Some(next_line) = lines.next_line().await? {
                 video
                     .use_title(|title| {
-                        debug!(
-                            "Line from '{}': '{next_line}'",
-                            match *title {
-                                Some(ref title) => title,
-                                None => video.url(),
-                            }
-                        )
+                        let title = match *title {
+                            Some(ref title) => title,
+                            None => video.url(),
+                        };
+                        if next_line.starts_with("ERROR:") {
+                            error!("Line from '{title}': '{next_line}'",)
+                        } else {
+                            debug!("Line from '{title}': '{next_line}'",)
+                        }
                     })
                     .await;
 

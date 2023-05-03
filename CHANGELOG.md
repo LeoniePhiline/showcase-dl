@@ -23,6 +23,13 @@ _(none)_
 
 _(none)_
 
+## [0.5.2] - 2023-05-03
+
+### Changed
+
+- Updated transitive dependencies.
+
+
 ## [0.5.1] - 2023-02-10
 
 ### Fixed
@@ -98,7 +105,8 @@ _(none)_
 
 - Initial implementation.
 
-[unreleased]: https://github.com/LeoniePhiline/showcase-dl/compare/0.5.1...HEAD
+[unreleased]: https://github.com/LeoniePhiline/showcase-dl/compare/0.5.2...HEAD
+[0.5.2]: https://github.com/LeoniePhiline/showcase-dl/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/LeoniePhiline/showcase-dl/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/LeoniePhiline/showcase-dl/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/LeoniePhiline/showcase-dl/compare/0.3.2...0.4.0

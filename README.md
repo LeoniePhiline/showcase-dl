@@ -73,6 +73,8 @@ This little tool is standing on the shoulders of giants.
 
 ## Disclaimer
 This tool has been built to help create legal private backups of your own vimeo videos and showcases.
+
 Make sure you hold the copyright of any material, and tread on safe legal ground according to
 the country you live in, before you use this tool!
+
 This tool does not itself download any video material. It merely spawns and sheperds processes of [`yt-dlp`](https://github.com/yt-dlp/yt-dlp).

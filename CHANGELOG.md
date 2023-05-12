@@ -13,7 +13,7 @@ _(none)_
 
 ### Changed
 
-_(none)_
+- Migrated `yt-dlp` from `--referer "<URL>"` to new style `--add-header "Referer:<URL>"`
 
 ### Fixed
 

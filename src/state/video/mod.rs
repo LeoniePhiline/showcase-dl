@@ -185,7 +185,7 @@ impl Video {
         self.set_stage_downloading().await;
 
         let cmd = format!(
-            "{} --newline --no-colors --referer '{}' '{}'",
+            "{} --newline --no-colors --add-header 'Referer:{}' '{}'",
             bin,
             &self.referer,
             self.url()
@@ -200,8 +200,8 @@ impl Video {
                     .stderr(Stdio::piped())
                     .arg("--newline")
                     .arg("--no-colors")
-                    .arg("--referer")
-                    .arg(&self.referer)
+                    .arg("--add-header")
+                    .arg(format!("Referer:{}", self.referer))
                     .arg(self.url())
                     .spawn()
                     .wrap_err_with(|| "Command failed to start ({cmd})")?,

@@ -1,12 +1,14 @@
+use std::rc::Rc;
+
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use tokio::sync::RwLockReadGuard;
-use tui::layout::{Constraint, Direction, Layout, Rect};
 
 use super::style;
 use crate::state::video::VideoRead;
 
 pub const CHUNKS_PER_VIDEO: usize = 4;
 
-pub fn layout_chunks(size: Rect, videos: &RwLockReadGuard<Vec<VideoRead>>) -> Vec<Rect> {
+pub fn layout_chunks(size: Rect, videos: &RwLockReadGuard<Vec<VideoRead>>) -> Rc<[Rect]> {
     Layout::default()
         .direction(Direction::Vertical)
         .margin(1)

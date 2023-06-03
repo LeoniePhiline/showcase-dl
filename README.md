@@ -1,7 +1,9 @@
 # showcase-dl
+
 *A parallel downloader to create private backups of embedded vimeo videos and vimeo showcases.*
 
 ## Why does this exist?
+
 The need arose to secure a private backup of a some embedded vimeo showcases.
 
 As it turned out, the almighty [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) did not support the creation of local backups from vimeo showcases.
@@ -42,7 +44,7 @@ Errors are always reported.
 Use more `-v[v[v[v]]]` for more verbosity:
 
 - `-v` is `warn`.
-- `-vv` is `info`. 
+- `-vv` is `info`.
 - `-vvv` is `debug`.
 - `-vvvv` is `trace`.
 
@@ -61,17 +63,19 @@ To use a custom version of `yt-dlp` or `youtube-dl`, pass the path to it via the
 ```
 
 ## Credentials
+
 This little tool is standing on the shoulders of giants.
 
 - 🦀 [The Rust programming language](https://www.rust-lang.org/)
 - 🗼 [The Tokio async runtime and ecosystem](https://tokio.rs/)
 - 📺 [The downloader for everything except vimeo showcases: `yt-dlp`](https://github.com/yt-dlp/yt-dlp)
-- 🖥️ [The `tui-rs` terminal user interface library](https://github.com/fdehau/tui-rs)
+- 🖥️ [The `ratatui` terminal user interface library](https://github.com/tui-rs-revival/ratatui)
 - 💥 [`color-eyre` and its predecessor `anyhow` for ergonomic error handling](https://github.com/yaahc/color-eyre)
 - 💬 [The `clap` commandline argument parsing library](https://github.com/clap-rs/clap)
 - 🍵 [Jon Gjengset and his awesome "Crust of Rust" series of videos](https://www.youtube.com/playlist?list=PLqbS7AVVErFiWDOAVrPt7aYmnuuOLYvOa) (You should totally [buy his book](https://nostarch.com/rust-rustaceans)!)
 
 ## Disclaimer
+
 This tool has been built to help create legal private backups of your own vimeo videos and showcases.
 
 Make sure you hold the copyright of any material, and tread on safe legal ground according to

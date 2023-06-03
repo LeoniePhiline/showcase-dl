@@ -4,7 +4,7 @@ pub enum ProgressDetail<'a> {
     Raw(&'a str),
     Parsed {
         line: &'a str,
-        // Using f64 instead of f32 to match `tui::widget::Gauge.ratio`.
+        // Using f64 instead of f32 to match `ratatui::widget::Gauge.ratio`.
         percent: Option<f64>,
 
         size: Option<Range<usize>>,

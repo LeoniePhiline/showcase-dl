@@ -8,15 +8,15 @@ use futures::{
     future::{AbortHandle, Abortable},
     stream, Future, StreamExt,
 };
-use std::{borrow::Cow, io, sync::Arc};
-use tokio::{sync::RwLock, time::MissedTickBehavior};
-use tui::{
+use ratatui::{
     backend::CrosstermBackend,
     layout::Alignment,
     text::Span,
     widgets::{Block, BorderType, Borders, Gauge, Row, Table},
     Terminal,
 };
+use std::{borrow::Cow, io, sync::Arc};
+use tokio::{sync::RwLock, time::MissedTickBehavior};
 
 use crate::state::{
     video::{progress::ProgressDetail, Stage as VideoStage, VideoRead},

@@ -10,7 +10,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use reqwest::{Client, Url};
 use serde_json::Value;
-use tracing::{debug, info};
+use tracing::{debug, info, trace};
 
 use state::{video::Video, State};
 use ui::Ui;
@@ -151,6 +151,8 @@ async fn process_simple_embeds(
 
 async fn extract_simple_embed_title(video: Arc<Video>, referer: &str) -> Result<()> {
     let response_text = util::fetch_with_referer(video.url(), referer).await?;
+
+    trace!(%response_text, "Trying to extract the video title from '{}'...", video.url());
 
     let maybe_captures = REGEX_TITLE_TAG.captures(&response_text);
 

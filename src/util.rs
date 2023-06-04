@@ -1,7 +1,10 @@
 use std::str::FromStr;
 
 use color_eyre::{eyre::Result, Report};
-use reqwest::{header::HeaderValue, Client, Url};
+use reqwest::{
+    header::{HeaderValue, REFERER, USER_AGENT},
+    Client, Url,
+};
 use tokio::task::JoinHandle;
 use tracing::debug;
 
@@ -11,12 +14,13 @@ pub async fn fetch_with_referer(url: &str, referer: &str) -> Result<String> {
     let url = Url::from_str(url)?;
 
     tokio::spawn(async move {
-        let mut referer_header_map = reqwest::header::HeaderMap::new();
-        referer_header_map.insert(reqwest::header::REFERER, referer_header_value);
-
         let response_text = Client::new()
             .get(url)
-            .headers(referer_header_map)
+            .header(REFERER, referer_header_value)
+            .header(
+                USER_AGENT,
+                "Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:115.0esr) Gecko/20110619 Firefox/115.0esr",
+            )
             .send()
             .await?
             .text()

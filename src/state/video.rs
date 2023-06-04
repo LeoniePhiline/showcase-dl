@@ -4,7 +4,7 @@ use color_eyre::{
     eyre::{Result, WrapErr},
     Report,
 };
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use tokio::{
     io::{AsyncBufReadExt, AsyncRead, BufReader},
@@ -43,6 +43,24 @@ pub struct VideoRead<'a> {
     output_file: RwLockReadGuard<'a, Option<String>>,
     percent_done: RwLockReadGuard<'a, Option<f64>>,
 }
+
+static RE_OUTPUT_FILE_DOWNLOADING: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"^\[download\] Destination: (?P<output_file>.+)$"#).unwrap());
+
+static RE_OUTPUT_FILE_ALREADY_DOWNLOADED: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"^\[download\] (?P<output_file>.+?) has already been downloaded$"#).unwrap()
+});
+
+static RE_OUTPUT_FILE_MERGING: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"^\[Merger\] Merging formats into "(?P<output_file>.+?)"$"#).unwrap()
+});
+
+static RE_PERCENT_DONE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"^\[download\]\s+(?P<percent_done>[\d+\.]+?)%"#).unwrap());
+
+static REGEX_DOWNLOAD_PROGRESS: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"^\[download\]\s+(?P<percent>[\d+\.]+?)% of\s+(?P<size>(?:~\s*)?[\d+\.]+?(?:[KMG]i)B)(?: at\s+(?P<speed>(?:(?:~\s*)?[\d+\.]+?(?:[KMG]i)?|Unknown )B/s))?(?: ETA\s+(?P<eta>(?:[\d:-]+|Unknown)))?(?: \(frag (?P<frag>\d+)/(?P<frag_total>\d+)\))?"#).unwrap()
+});
 
 impl Video {
     pub fn new(url: impl Into<String>, referer: impl Into<String>) -> Self {
@@ -112,20 +130,6 @@ impl Video {
     }
 
     async fn extract_output_file(&self, line: &str) {
-        lazy_static! {
-            static ref RE_OUTPUT_FILE_DOWNLOADING: Regex =
-                Regex::new(r#"^\[download\] Destination: (?P<output_file>.+)$"#,).unwrap();
-        }
-        lazy_static! {
-            static ref RE_OUTPUT_FILE_ALREADY_DOWNLOADED: Regex =
-                Regex::new(r#"^\[download\] (?P<output_file>.+?) has already been downloaded$"#,)
-                    .unwrap();
-        }
-        lazy_static! {
-            static ref RE_OUTPUT_FILE_MERGING: Regex =
-                Regex::new(r#"^\[Merger\] Merging formats into "(?P<output_file>.+?)"$"#,).unwrap();
-        }
-
         // Extract output file if present in the current line
         let maybe_captures = RE_OUTPUT_FILE_DOWNLOADING
             .captures(line)
@@ -142,11 +146,6 @@ impl Video {
     }
 
     async fn extract_percent_done(&self, line: &str) {
-        lazy_static! {
-            static ref RE_PERCENT_DONE: Regex =
-                Regex::new(r#"^\[download\]\s+(?P<percent_done>[\d+\.]+?)%"#,).unwrap();
-        }
-
         // Extract current percent done if present in the current line
         let maybe_captures = RE_PERCENT_DONE.captures(line);
         if let Some(captures) = maybe_captures {
@@ -345,15 +344,9 @@ impl<'a> VideoRead<'a> {
     }
 
     pub fn progress_detail(&'a self) -> Option<ProgressDetail<'a>> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(
-                r#"^\[download\]\s+(?P<percent>[\d+\.]+?)% of\s+(?P<size>(?:~\s*)?[\d+\.]+?(?:[KMG]i)B)(?: at\s+(?P<speed>(?:(?:~\s*)?[\d+\.]+?(?:[KMG]i)?|Unknown )B/s))?(?: ETA\s+(?P<eta>(?:[\d:-]+|Unknown)))?(?: \(frag (?P<frag>\d+)/(?P<frag_total>\d+)\))?"#,
-            ).unwrap();
-        }
-
         match *self.line {
             Some(ref line) => {
-                let maybe_captures = RE.captures(line.as_str());
+                let maybe_captures = REGEX_DOWNLOAD_PROGRESS.captures(line.as_str());
                 match maybe_captures {
                     Some(captures) => {
                         let percent = captures

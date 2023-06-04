@@ -18,7 +18,7 @@ _(none)_
   Thanks [joshka](https://github.com/joshka)!
   ([#4](https://github.com/LeoniePhiline/showcase-dl/issues/4), [#5](https://github.com/LeoniePhiline/showcase-dl/pull/5))
   See also <https://github.com/fdehau/tui-rs/issues/654>
-- Sort `use` groups and `mod` in a standardized fashion:
+- Sort `use` groups and `mod` in a standardized fashion ([#6](https://github.com/LeoniePhiline/showcase-dl/issues/6)):
   - `use std::...`
   - `use <external>::...`
   - `use` internal
@@ -27,6 +27,9 @@ _(none)_
       e.g. `ui/layout` uses `super::style`, as both are tightly coupled
     - Absolute with `crate::...`
   - `mod ...`
+- Switch from `lazy_static` to `once_cell` until `std::sync::LazyLock` is released.
+  ([#7](https://github.com/LeoniePhiline/showcase-dl/issues/7))
+
 
 ### Fixed
 

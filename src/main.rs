@@ -6,7 +6,7 @@ use color_eyre::{
 };
 use futures::{stream, TryStreamExt};
 use json_dotpath::DotPaths;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use reqwest::{Client, Url};
 use serde_json::Value;
@@ -20,6 +20,21 @@ mod state;
 mod trace;
 mod ui;
 mod util;
+
+static REGEX_VIDEO_IFRAME: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"<iframe[^>]* src="(?P<embed_url>https://player\.vimeo\.com/video/[^"]+)""#)
+        .unwrap()
+});
+
+static REGEX_TITLE_TAG: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"<title>(?P<title>.*?)</title>"#).unwrap());
+
+static REGEX_SHOWCASE_IFRAME: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"<iframe[^>]* src="(?P<embed_url>https://vimeo\.com/showcase/[^"]+)""#).unwrap()
+});
+
+static REGEX_EMBED_URL: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"src="(?P<embed_url>[^"]+)""#).unwrap());
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<()> {
@@ -76,14 +91,7 @@ async fn process_simple_embeds(
     bin: &str,
     state: Arc<State>,
 ) -> Result<()> {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(
-            r#"<iframe[^>]* src="(?P<embed_url>https://player\.vimeo\.com/video/[^"]+)""#
-        )
-        .unwrap();
-    }
-
-    stream::iter(RE.captures_iter(page_body).map(Ok))
+    stream::iter(REGEX_VIDEO_IFRAME.captures_iter(page_body).map(Ok))
         .try_for_each_concurrent(None, |captures| {
             let state = state.clone();
             async move {
@@ -144,11 +152,7 @@ async fn process_simple_embeds(
 async fn extract_simple_embed_title(video: Arc<Video>, referer: &str) -> Result<()> {
     let response_text = util::fetch_with_referer(video.url(), referer).await?;
 
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r#"<title>(?P<title>.*?)</title>"#).unwrap();
-    }
-
-    let maybe_captures = RE.captures(&response_text);
+    let maybe_captures = REGEX_TITLE_TAG.captures(&response_text);
 
     if let Some(captures) = maybe_captures {
         if let Some(title_match) = captures.name("title") {
@@ -170,13 +174,7 @@ async fn process_showcases(
     bin: &str,
     state: Arc<State>,
 ) -> Result<()> {
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(r#"<iframe[^>]* src="(?P<embed_url>https://vimeo\.com/showcase/[^"]+)""#)
-                .unwrap();
-    }
-
-    stream::iter(RE.captures_iter(page_body).map(Ok))
+    stream::iter(REGEX_SHOWCASE_IFRAME.captures_iter(page_body).map(Ok))
         .try_for_each_concurrent(None, |captures| {
             let referer = &referer;
             let state = state.clone();
@@ -269,11 +267,7 @@ async fn process_showcase_clip(
 
     debug!("config embed_code: {embed_code:#?}");
 
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r#"src="(?P<embed_url>[^"]+)""#).unwrap();
-    }
-
-    let captures = RE.captures(&embed_code).ok_or_else(|| {
+    let captures = REGEX_EMBED_URL.captures(&embed_code).ok_or_else(|| {
         eyre!(
             "Could not extract embed URL from config 'video.embed_code' string (no regex captures)"
         )

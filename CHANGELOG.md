@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] <!-- release-date -->
 
+## [0.6.1] - 2023-06-04
+
 ### Fixed
 
 - Set an arbitrary user agent string to circumvent Vimeo crawler player, which does not fill the `<title />` HTMl tag correctly.
@@ -140,7 +142,8 @@ _(none)_
 - Initial implementation.
 
 <!-- next-url -->
-[Unreleased]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/LeoniePhiline/showcase-dl/compare/0.5.2...v0.6.0
 [0.5.2]: https://github.com/LeoniePhiline/showcase-dl/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/LeoniePhiline/showcase-dl/compare/0.5.0...0.5.1

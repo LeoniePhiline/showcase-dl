@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added 
 
-_(none)_
+- Enable tracing [`EnvFilter`](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html).
+  ([#2](https://github.com/LeoniePhiline/showcase-dl/issues/2))
 
 ### Changed
 

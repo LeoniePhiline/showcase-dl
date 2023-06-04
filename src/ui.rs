@@ -53,10 +53,8 @@ impl Ui {
 
         let (abort_handle, abort_registration) = AbortHandle::new_pair();
         let do_work_abortable = Abortable::new(
-            async {
-                // Drive application process futures via closure.
-                do_work.await
-            },
+            // Drive application process futures via closure.
+            do_work,
             abort_registration,
         );
 

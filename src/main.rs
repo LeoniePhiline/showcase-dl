@@ -70,7 +70,7 @@ async fn extract_and_download(state: Arc<State>, url: &str, bin: &str) -> Result
     state.set_stage_fetching_source(url).await;
 
     let response_text = Client::new().get(page_url).send().await?.text().await?;
-    debug!(page_response_text = ?response_text);
+    trace!(page_response_text = %response_text);
 
     info!("Extract vimeo embeds...");
     state.set_stage_processing().await;
@@ -159,7 +159,7 @@ async fn extract_simple_embed_title(video: Arc<Video>, referer: &str) -> Result<
     if let Some(captures) = maybe_captures {
         if let Some(title_match) = captures.name("title") {
             let matched_title = htmlize::unescape(title_match.as_str());
-            debug!(
+            info!(
                 "Matched title '{matched_title}' for simple embed '{}'",
                 video.url()
             );
@@ -210,7 +210,7 @@ async fn process_showcase_embed(
         .lines()
         .find(|line| line.contains("app-data"))
         .wrap_err("Script tag 'app-data' not found")?;
-    debug!(app_data_line = ?app_data_line);
+    trace!(app_data_line = %app_data_line);
 
     let app_data_json = format!(
         "{{{}}}",
@@ -222,7 +222,7 @@ async fn process_showcase_embed(
             .wrap_err("Could not back-split 'app-data'")?
             .0
     );
-    debug!(app_data_json = ?app_data_json);
+    trace!(app_data_json = %app_data_json);
 
     let data: Value = serde_json::from_str(&app_data_json)?;
     debug!(decoded_app_data = ?data);
@@ -256,7 +256,7 @@ async fn process_showcase_clip(
 
     let client = Client::new();
     let response_text = client.get(config_url).send().await?.text().await?;
-    debug!(config_response_text = ?response_text);
+    trace!(config_response_text = %response_text);
 
     let config: Value = serde_json::from_str(&response_text)?;
     debug!("config response data: {config:#?}");
@@ -284,7 +284,7 @@ async fn process_showcase_clip(
             let video = Arc::new(Video::new_with_title(
                 embed_url.as_ref(),
                 referer,
-                config.dot_get::<String>("video.title")?, // maybe_title
+                config.dot_get::<String>("video.title")?,
             ));
             (*state).push_video(video.clone()).await;
 

@@ -1,9 +1,8 @@
-use color_eyre::eyre::{eyre, Result};
-use tracing_appender::non_blocking::WorkerGuard;
-
 use std::ops::Deref;
 
 use clap_verbosity_flag::Verbosity;
+use color_eyre::eyre::{eyre, Result};
+use tracing_appender::non_blocking::WorkerGuard;
 
 use crate::args::Args;
 

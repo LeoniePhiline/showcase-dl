@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use color_eyre::{
     eyre::{bail, eyre, ContextCompat, Result},
     Report,
@@ -8,17 +10,16 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use reqwest::{Client, Url};
 use serde_json::Value;
-use std::sync::Arc;
 use tracing::{debug, info};
+
+use state::{video::Video, State};
+use ui::Ui;
 
 mod args;
 mod state;
 mod trace;
 mod ui;
 mod util;
-
-use crate::state::{video::Video, State};
-use crate::ui::Ui;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<()> {

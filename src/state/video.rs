@@ -1,10 +1,11 @@
+use std::{path::Path, process::Stdio, sync::Arc};
+
 use color_eyre::{
     eyre::{Result, WrapErr},
     Report,
 };
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{path::Path, process::Stdio, sync::Arc};
 use tokio::{
     io::{AsyncBufReadExt, AsyncRead, BufReader},
     process::{Child, Command},
@@ -14,8 +15,7 @@ use tokio::{
 use tracing::{debug, error};
 
 use crate::util::maybe_join;
-
-use self::progress::ProgressDetail;
+use progress::ProgressDetail;
 
 pub mod progress;
 

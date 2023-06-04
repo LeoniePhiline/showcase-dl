@@ -18,6 +18,15 @@ _(none)_
   Thanks [joshka](https://github.com/joshka)!
   ([#4](https://github.com/LeoniePhiline/showcase-dl/issues/4), [#5](https://github.com/LeoniePhiline/showcase-dl/pull/5))
   See also <https://github.com/fdehau/tui-rs/issues/654>
+- Sort `use` groups and `mod` in a standardized fashion:
+  - `use std::...`
+  - `use <external>::...`
+  - `use` internal
+    - Relative without `self::` for submodules
+    - Relative with `super::...` where in the same logical group;
+      e.g. `ui/layout` uses `super::style`, as both are tightly coupled
+    - Absolute with `crate::...`
+  - `mod ...`
 
 ### Fixed
 

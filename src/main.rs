@@ -99,8 +99,8 @@ async fn process_simple_embeds(
 
                 match captures.name("embed_url") {
                     Some(embed_url_match) => {
-                        let embed_url = html_escape::decode_html_entities(embed_url_match.as_str())
-                            .into_owned();
+                        let embed_url =
+                            htmlize::unescape_attribute(embed_url_match.as_str()).into_owned();
 
                         let video = Arc::new(Video::new(embed_url, referer));
                         (*state).push_video(video.clone()).await;
@@ -158,12 +158,12 @@ async fn extract_simple_embed_title(video: Arc<Video>, referer: &str) -> Result<
 
     if let Some(captures) = maybe_captures {
         if let Some(title_match) = captures.name("title") {
-            let matched_title = title_match.as_str();
+            let matched_title = htmlize::unescape(title_match.as_str());
             debug!(
                 "Matched title '{matched_title}' for simple embed '{}'",
                 video.url()
             );
-            video.update_title(matched_title.into()).await;
+            video.update_title(matched_title.into_owned()).await;
         }
     }
 
@@ -185,9 +185,9 @@ async fn process_showcases(
 
                 match captures.name("embed_url") {
                     Some(embed_url_match) => {
-                        let embed_url = embed_url_match.as_str();
+                        let embed_url = htmlize::unescape_attribute(embed_url_match.as_str());
                         info!("Extract clips from showcase '{embed_url}'...");
-                        process_showcase_embed(embed_url, referer, bin, state).await
+                        process_showcase_embed(embed_url.as_ref(), referer, bin, state).await
                     }
                     None => bail!("Capture group did not match named 'embed_url'"),
                 }
@@ -279,10 +279,10 @@ async fn process_showcase_clip(
         Some(embed_url_match) => {
             debug!("embed_url_match: {embed_url_match:#?}");
 
-            let embed_url = html_escape::decode_html_entities(embed_url_match.as_str());
+            let embed_url = htmlize::unescape_attribute(embed_url_match.as_str());
 
             let video = Arc::new(Video::new_with_title(
-                &*embed_url,
+                embed_url.as_ref(),
                 referer,
                 config.dot_get::<String>("video.title")?, // maybe_title
             ));

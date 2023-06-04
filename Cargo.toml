@@ -11,7 +11,7 @@ clap-verbosity-flag = "2.0.0"
 color-eyre = "0.6.2"
 crossterm = { version = "0.26.0", features = ["event-stream"] }
 futures = "0.3.24"
-html-escape = "0.2.11"
+htmlize = { version = "1.0.2", features = ["unescape"] }
 json_dotpath = "1.1.0"
 log = "0.4.17"
 once_cell = "1.17.2"

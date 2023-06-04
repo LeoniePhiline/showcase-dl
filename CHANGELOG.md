@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Set an arbitrary user agent string to circumvent Vimeo crawler player, which does not fill the `<title />` HTMl tag correctly.
   ([#9](https://github.com/LeoniePhiline/showcase-dl/issues/9))
+- Decode HTML entities in video titles.
 
 ## [0.6.0] - 2023-06-04
 

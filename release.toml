@@ -1,0 +1,13 @@
+allow-branch = ["main"]
+# consolidate-commits = false
+pre-release-replacements = [
+  # {file="README.md", search="showcase-dl = .*", replace="{{crate_name}} = \"{{version}}\""},
+  # {file="src/lib.rs", search="showcase-dl = .*", replace="{{crate_name}} = \"{{version}}\""},
+  {file="CHANGELOG.md", search="Unreleased", replace="{{version}}"},
+  {file="CHANGELOG.md", search="\\.\\.\\.HEAD", replace="...{{tag_name}}", exactly=1},
+  {file="CHANGELOG.md", search="<!-- release-date -->", replace="- {{date}}"},
+  {file="CHANGELOG.md", search="<!-- next-header -->", replace="<!-- next-header -->\n\n## [Unreleased] <!-- release-date -->", exactly=1},
+  {file="CHANGELOG.md", search="<!-- next-url -->", replace="<!-- next-url -->\n[Unreleased]: https://github.com/LeoniePhiline/showcase-dl/compare/{{tag_name}}...HEAD", exactly=1},
+]
+pre-release-commit-message = "release: {{version}}"
+pre-release-hook = ["cargo", "test"]

@@ -44,7 +44,7 @@ impl Ui {
         let mut terminal = self.take_terminal()?;
 
         // Stream input events (Keyboard, Mouse, Resize)
-        let mut reader = EventStream::new();
+        let mut event_stream = EventStream::new();
 
         // Prepare render tick interval
         let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(tick));
@@ -75,7 +75,7 @@ impl Ui {
                         biased;
 
                         // Handle streamed input events as they occur
-                        maybe_event = reader.next() => match maybe_event {
+                        maybe_event = event_stream.next() => match maybe_event {
                             Some(Ok(event)) => if ! self.handle_event(event) { break },
                             // Event reader poll error, e.g. initialization failure, or interrupt
                             Some(Err(e)) => bail!(e),

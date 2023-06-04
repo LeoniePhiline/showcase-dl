@@ -8,7 +8,8 @@ use crossterm::{
 };
 use futures::{
     future::{AbortHandle, Abortable},
-    stream, Future, StreamExt,
+    stream::{self, Aborted},
+    Future, StreamExt,
 };
 use ratatui::{
     backend::CrosstermBackend,
@@ -61,10 +62,10 @@ impl Ui {
         tokio::try_join!(
             async {
                 // Drive application process futures, aborting in reaction to user request.
-                match do_work_abortable.await.ok() {
-                    Some(result) => result,
+                match do_work_abortable.await {
+                    Ok(result) => result,
                     // Swallow futures::future::Aborted error.
-                    None => Ok(()),
+                    Err(Aborted) => Ok(()),
                 }
             },
             async {

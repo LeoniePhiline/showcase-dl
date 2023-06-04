@@ -13,7 +13,11 @@ _(none)_
 
 ### Changed
 
-- Migrated `yt-dlp` from `--referer "<URL>"` to new style `--add-header "Referer:<URL>"`
+- Migrate `yt-dlp` from `--referer "<URL>"` to new style `--add-header "Referer:<URL>"`
+- Migrate from unmaintained `fdehau/tui` to `tui-rs-revival/ratatui`.
+  Thanks [joshka](https://github.com/joshka)!
+  ([#4](https://github.com/LeoniePhiline/showcase-dl/issues/4), [#5](https://github.com/LeoniePhiline/showcase-dl/pull/5))
+  See also <https://github.com/fdehau/tui-rs/issues/654>
 
 ### Fixed
 
@@ -27,7 +31,7 @@ _(none)_
 
 ### Changed
 
-- Updated transitive dependencies.
+- Update transitive dependencies.
 
 
 ## [0.5.1] - 2023-02-10

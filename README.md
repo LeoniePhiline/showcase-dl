@@ -88,6 +88,7 @@ This little tool is standing on the shoulders of giants.
 
 - 🦀 [The Rust programming language](https://www.rust-lang.org/)
 - 🗼 [The Tokio async runtime and ecosystem](https://tokio.rs/)
+- 🌏 [The `reqwest` HTTP client and its underlying `hyper` HTTP library](https://github.com/seanmonstar/reqwest)
 - 📺 [The downloader for everything except vimeo showcases: `yt-dlp`](https://github.com/yt-dlp/yt-dlp)
 - 🖥  [The `ratatui` terminal user interface library](https://github.com/tui-rs-revival/ratatui)
 - 💥 [`color-eyre` and its predecessor `anyhow` for ergonomic error handling](https://github.com/yaahc/color-eyre)

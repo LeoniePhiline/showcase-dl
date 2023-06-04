@@ -35,15 +35,20 @@ After all downloads have finished, the app will remain open. This way, you can j
 
 ## Debugging
 
-### Logging
+### Raising log verbosity
 
-#### Globally, using the `-v` CLI verbosity flag
-
-Using the verbosity flag, you can observe runtime information being written to `vimeo-showcase.log`.
+Using the `-v[v[v[v]]]` verbosity flag or the `RUST_LOG` environment variable, you can observe runtime information being written to `vimeo-showcase.log`.
 
 Errors are always reported.
 
-Use more `-v[v[v[v]]]` for more verbosity:
+- `warn`: Only errors and warnings.
+- `info`: Rough progress updates.
+- `debug`: Fine grained progress updates and regular expression matches.
+- `trace`: Full dumps of fetched HTML content.
+
+#### Globally, using the `-v` CLI verbosity flag
+
+Invoke `showcase-dl` with more `-v[v[v[v]]]` for more verbosity:
 
 - `-v` is `warn`.
 - `-vv` is `info`.
@@ -63,7 +68,7 @@ RUST_LOG=showcase_dl=debug
 
 #### Observing log output
 
-Use a split terminal, or a separate terminal window, to observe the live messges with (Linux, Mac):
+Use a split terminal, or a separate terminal window, to observe the live messages with (Linux, Mac):
 
 ```
 tail -f vimeo-showcase.log

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] <!-- release-date -->
 
+### Changed
+
+- Clarify logging options in [`README.md`](https://github.com/LeoniePhiline/showcase-dl/blob/main/README.md).
+
 ## [0.6.1] - 2023-06-04
 
 ### Fixed

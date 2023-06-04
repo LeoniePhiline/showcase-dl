@@ -32,7 +32,9 @@ pub async fn fetch_with_referer(url: &str, referer: &str) -> Result<String> {
 // Await the `JoinHandle` if the given `Option` is `Some(_)`
 #[inline]
 pub async fn maybe_join(maybe_spawned: Option<JoinHandle<Result<()>>>) -> Result<()> {
-    maybe_spawned.map(|join: JoinHandle<Result<()>>| async { join.await? });
+    if let Some(spawned) = maybe_spawned {
+        return spawned.await?;
+    }
 
     Ok(())
 }

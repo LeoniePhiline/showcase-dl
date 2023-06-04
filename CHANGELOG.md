@@ -34,7 +34,7 @@ _(none)_
 
 ### Fixed
 
-_(none)_
+- Change `maybe_join` to propagate future output result. (#[3](https://github.com/LeoniePhiline/showcase-dl/issues/3))
 
 ### Removed
 

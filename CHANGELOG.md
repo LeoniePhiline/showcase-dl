@@ -37,7 +37,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#7](https://github.com/LeoniePhiline/showcase-dl/issues/7))
 - Swallow `futures::future::Aborted` explicitly. ([#8](https://github.com/LeoniePhiline/showcase-dl/issues/8))
 
-
 ### Fixed
 
 - Change `maybe_join` to propagate future output result. (#[3](https://github.com/LeoniePhiline/showcase-dl/issues/3))

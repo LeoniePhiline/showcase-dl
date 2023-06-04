@@ -6,7 +6,7 @@ use reqwest::{
     Client, Url,
 };
 use tokio::task::JoinHandle;
-use tracing::debug;
+use tracing::trace;
 
 // Fetch a URL, applying a referer header
 pub async fn fetch_with_referer(url: &str, referer: &str) -> Result<String> {
@@ -26,7 +26,7 @@ pub async fn fetch_with_referer(url: &str, referer: &str) -> Result<String> {
             .text()
             .await?;
 
-        debug!(embed_response_text = ?response_text);
+        trace!(embed_response_text = %response_text);
 
         Ok::<String, Report>(response_text)
     })

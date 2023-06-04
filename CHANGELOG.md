@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#9](https://github.com/LeoniePhiline/showcase-dl/issues/9))
 - Decode HTML entities in video titles.
 
+### Changed
+
+- Demote content dumps into 'trace' log level.
+- Lift successful title match into 'info' log level.
+- Use `%` / `Display` rather than `?` / `Debug` to render readable content dumps.
+
 ## [0.6.0] - 2023-06-04
 
 ### Added 

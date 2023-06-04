@@ -12,7 +12,7 @@ use tokio::{
     sync::{RwLock, RwLockReadGuard},
     task::JoinHandle,
 };
-use tracing::{debug, error};
+use tracing::{debug, error, trace};
 
 use crate::util::maybe_join;
 use progress::ProgressDetail;
@@ -305,7 +305,7 @@ impl Video {
                         if next_line.starts_with("ERROR:") {
                             error!("Line from '{title}': '{next_line}'",)
                         } else {
-                            debug!("Line from '{title}': '{next_line}'",)
+                            trace!("Line from '{title}': '{next_line}'",)
                         }
                     })
                     .await;

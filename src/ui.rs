@@ -1,3 +1,5 @@
+use std::{borrow::Cow, io, sync::Arc};
+
 use color_eyre::eyre::{bail, Result};
 use crossterm::{
     event::{Event, EventStream, KeyCode, KeyEvent, KeyModifiers},
@@ -15,7 +17,6 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Gauge, Row, Table},
     Terminal,
 };
-use std::{borrow::Cow, io, sync::Arc};
 use tokio::{sync::RwLock, time::MissedTickBehavior};
 
 use crate::state::{

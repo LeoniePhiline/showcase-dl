@@ -203,7 +203,7 @@ impl Video {
                     .arg(format!("Referer:{}", self.referer))
                     .arg(self.url())
                     .spawn()
-                    .wrap_err_with(|| "Command failed to start ({cmd})")?,
+                    .wrap_err_with(|| format!("Command failed to start: {cmd}"))?,
             )
             .await?;
 
@@ -242,7 +242,7 @@ impl Video {
                         .arg(source)
                         .arg(&destination)
                         .spawn()
-                        .wrap_err_with(|| "Command failed to start ({cmd})")?,
+                        .wrap_err_with(|| format!("Command failed to start: {cmd}"))?,
                 )
                 .await?;
 

@@ -14,6 +14,8 @@ This, however, soon turned into perfectionist yak shaving, ending up in a termin
 
 ## What does it do and how do I use it?
 
+### Installation
+
 Currently no prebuilt binaries are provided. To compile the tool, simply get `rustup` and `cargo` by following the instructions at [rustup.rs](https://rustup.rs/).
 
 Then `git clone` this repository (or download as `.zip` file and extract), and run `cargo build --release` in the project folder. Cargo will make sure to download all dependencies from [crates.io](https://crates.io), install and compile them; then it will compile the app for you.
@@ -21,7 +23,15 @@ Then `git clone` this repository (or download as `.zip` file and extract), and r
 The finished executable binary will be found at `<project folder>/target/release/showcase-dl` on Linux or Mac,
 or at `<project folder>/target/release/showcase-dl.exe` on Windows.
 
-To start downloads, run the executable in your terminal, passing the target page's URL as only argument.
+### Usage
+
+To start downloads, run the executable in your terminal. The only required argument is the URL of the page containing the embedded showcases.
+
+```bash
+cd "<project folder>";
+cargo build --release;
+./target/release/showcase-dl "<URL of webpage containing embedded videos>"
+```
 
 ![Download progress](/img/In%20progress%2C%20spaced.png)
 
@@ -32,6 +42,22 @@ As long as you do not close the app ahead of time, your videos will be downloade
 ![Partially finished](/img/In%20progress%2C%20partially%20finished.png)
 
 After all downloads have finished, the app will remain open. This way, you can just go do other stuff, and come back to a nice status overview. Close the app with the `Q` or `Esc` key, or the combination `Ctrl+C`.
+
+### Passing options to the downloader and extracting audio
+
+After the webpage URL and a double dash (`--`) you can define [additional options](https://github.com/yt-dlp/yt-dlp#general-options), which will be passed straight to the downloader (`yt-dlp` by default).
+
+This allows you to define video formats:
+
+```bash
+./target/debug/showcase-dl "<URL of webpage>" -- --audio-multistreams --format "bv[vcodec^=avc1]+ba[acodec^=opus]+ba[acodec^=mp4a]/b"
+```
+
+Or extract audio:
+
+```bash
+./target/debug/showcase-dl "<URL of webpage>" -- --extract-audio --audio-format "opus/mp3" --keep-video
+```
 
 ## Debugging
 
@@ -55,6 +81,12 @@ Invoke `showcase-dl` with more `-v[v[v[v]]]` for more verbosity:
 - `-vvv` is `debug`.
 - `-vvvv` is `trace`.
 
+Place the verbosity flag before the webpage URL, especially if using additional downloader options, e.g.:
+
+```bash
+./target/release/showcase-dl -vvv <URL> -- --prefer-free-formats
+```
+
 #### Selectively, using environment variable
 
 Use the [`EnvFilter`](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html) syntax
@@ -63,23 +95,23 @@ to target specific crates and raise verbosity in a finer grained manner.
 **Example:** To only enable `debug` logging for `showcase-dl` itself, but not for its dependencies, set:
 
 ```bash
-RUST_LOG=showcase_dl=debug
+RUST_LOG="showcase_dl=debug"
 ```
 
 #### Observing log output
 
 Use a split terminal, or a separate terminal window, to observe the live messages with (Linux, Mac):
 
-```
+```bash
 tail -f showcase-dl.log
 ```
 
 ### Custom downloader
 
-To use a custom version of `yt-dlp` or `youtube-dl`, pass the path to it via the `--bin` option, e.g.:
+To use a custom version of `yt-dlp` or `youtube-dl`, pass the path to it via the `--downloader` option, e.g.:
 
-```
-./target/release/showcase-dl --bin /path/to/yt-dlp/yt-dlp.sh -vvv <URL>  
+```bash
+./target/release/showcase-dl --downloader /path/to/yt-dlp/yt-dlp.sh "<URL>"
 ```
 
 ## Credentials

@@ -1,4 +1,4 @@
-use std::{path::Path, process::Stdio, sync::Arc};
+use std::{process::Stdio, sync::Arc};
 
 use color_eyre::{
     eyre::{Result, WrapErr},
@@ -44,8 +44,9 @@ pub struct VideoRead<'a> {
     percent_done: RwLockReadGuard<'a, Option<f64>>,
 }
 
-static RE_OUTPUT_FILE_DOWNLOADING: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r#"^\[download\] Destination: (?P<output_file>.+)$"#).unwrap());
+static RE_OUTPUT_FILE_DESTINATION: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"^\[(?:download|ExtractAudio)\] Destination: (?P<output_file>.+)$"#).unwrap()
+});
 
 static RE_OUTPUT_FILE_ALREADY_DOWNLOADED: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"^\[download\] (?P<output_file>.+?) has already been downloaded$"#).unwrap()
@@ -61,6 +62,9 @@ static RE_PERCENT_DONE: Lazy<Regex> =
 static REGEX_DOWNLOAD_PROGRESS: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"^\[download\]\s+(?P<percent>[\d+\.]+?)% of\s+(?P<size>(?:~\s*)?[\d+\.]+?(?:[KMG]i)B)(?: at\s+(?P<speed>(?:(?:~\s*)?[\d+\.]+?(?:[KMG]i)?|Unknown )B/s))?(?: ETA\s+(?P<eta>(?:[\d:-]+|Unknown)))?(?: \(frag (?P<frag>\d+)/(?P<frag_total>\d+)\))?"#).unwrap()
 });
+
+static STAGE_EXTRACTING_AUDIO: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"^\[ExtractAudio\]"#).unwrap());
 
 impl Video {
     pub fn new(url: impl Into<String>, referer: impl Into<String>) -> Self {
@@ -124,6 +128,10 @@ impl Video {
         self.extract_output_file(&new_line).await;
         self.extract_percent_done(&new_line).await;
 
+        if STAGE_EXTRACTING_AUDIO.is_match(&new_line) {
+            self.set_stage_extracting_audio().await;
+        }
+
         // Store the line to ref to it for size, speed and ETA ranges.
         let mut line = self.line.write().await;
         *line = Some(new_line);
@@ -131,7 +139,7 @@ impl Video {
 
     async fn extract_output_file(&self, line: &str) {
         // Extract output file if present in the current line
-        let maybe_captures = RE_OUTPUT_FILE_DOWNLOADING
+        let maybe_captures = RE_OUTPUT_FILE_DESTINATION
             .captures(line)
             .or_else(|| RE_OUTPUT_FILE_ALREADY_DOWNLOADED.captures(line))
             .or_else(|| RE_OUTPUT_FILE_MERGING.captures(line));
@@ -180,20 +188,25 @@ impl Video {
         self.output_file.read().await
     }
 
-    pub async fn download(self: Arc<Self>, bin: &str) -> Result<()> {
+    pub async fn download(
+        self: Arc<Self>,
+        downloader: Arc<String>,
+        downloader_options: Arc<Vec<String>>,
+    ) -> Result<()> {
         self.set_stage_downloading().await;
 
         let cmd = format!(
-            "{} --newline --no-colors --add-header 'Referer:{}' '{}'",
-            bin,
+            "{} --newline --no-colors --add-header 'Referer:{}' {} '{}'",
+            downloader,
             &self.referer,
+            downloader_options.as_ref().join(" "),
             self.url()
         );
 
         debug!("Spawn: {cmd}");
         self.clone()
             .child_read_to_end(
-                Command::new(bin)
+                Command::new(downloader.as_ref())
                     .kill_on_drop(true)
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
@@ -201,6 +214,7 @@ impl Video {
                     .arg("--no-colors")
                     .arg("--add-header")
                     .arg(format!("Referer:{}", self.referer))
+                    .args(downloader_options.as_ref())
                     .arg(self.url())
                     .spawn()
                     .wrap_err_with(|| format!("Command failed to start: {cmd}"))?,
@@ -208,46 +222,6 @@ impl Video {
             .await?;
 
         self.set_stage_finished().await;
-
-        Ok(())
-    }
-
-    pub async fn extract_audio(self: Arc<Self>, format: &str) -> Result<()> {
-        if let Some(ref output_file) = *self.output_file().await {
-            self.set_stage_extracting_audio().await;
-
-            let source = Path::new(output_file);
-            let destination = Path::new(output_file).with_extension(format);
-
-            let cmd = format!(
-                "ffmpeg -y -i '{}' '{}'",
-                source.to_string_lossy(),
-                destination.to_string_lossy()
-            );
-
-            debug!("Spawn: {cmd}");
-            self.clone()
-                // TODO: Need a different read strategy. `-progress pipe:1` gives multi-line progress reports each second.
-                //       These need to be parsed or appended somehow to form a line.
-                //       Alternatively, if we work without
-                .child_read_to_end(
-                    Command::new("ffmpeg")
-                        .kill_on_drop(true)
-                        .stdout(Stdio::piped())
-                        .stderr(Stdio::piped())
-                        .arg("-nostdin")
-                        // TODO: Make audio extraction overwriting of existing files depend on argument
-                        .arg("-y")
-                        .arg("-i")
-                        .arg(source)
-                        .arg(&destination)
-                        .spawn()
-                        .wrap_err_with(|| format!("Command failed to start: {cmd}"))?,
-                )
-                .await?;
-
-            self.set_stage_finished().await;
-        }
 
         Ok(())
     }

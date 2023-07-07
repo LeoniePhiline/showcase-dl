@@ -10,6 +10,7 @@ pub struct Args {
     #[command(flatten)]
     pub verbosity: clap_verbosity_flag::Verbosity,
 
+    /// Path to the downloader, such as `yt-dlp` or `youtube-dl`
     #[arg(long, default_value_t = String::from("yt-dlp"))]
     pub downloader: String,
 

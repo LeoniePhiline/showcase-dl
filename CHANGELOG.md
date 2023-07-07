@@ -11,15 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `reqwest` and `hyper` to credentials.
+- Pass all command line options after a double dash (`--`) straight to the downloader.
+  This allows for [detailed configuration](https://github.com/yt-dlp/yt-dlp#general-options) of `yt-dlp`.
 - Release terminal before printing error and panic stack traces.
+- Add `reqwest` and `hyper` to credentials.
 
 ### Changed
 
+- Rename command line flag `--bin` to `--downloader` to match `downloader_options`.
 - Clarify logging options in [`README.md`](https://github.com/LeoniePhiline/showcase-dl/blob/main/README.md).
 - Rename log file to `showcase-dl.log`.
 - Minor code clean-up.
 - Update locked dependencies.
+
+### Removed
+
+- Remove built-in `mp3` and `opus` audio extraction.
+  The former behavior can be imitated by appending `yt-dlp` audio extraction options to the command line.
+  E.g.: `showcase-dl <URL> -- --extract-audio --audio-format "opus/mp3" --keep-video`
 
 ### Fixed
 

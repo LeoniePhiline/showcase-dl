@@ -108,27 +108,22 @@ impl Ui {
     }
 
     pub(crate) fn make_terminal() -> Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
-        let mut stdout = io::stdout();
-        execute!(stdout, EnterAlternateScreen)?;
-        let backend = CrosstermBackend::new(stdout);
-
+        let backend = CrosstermBackend::new(io::stdout());
         Ok(Terminal::new(backend)?)
     }
 
     fn take_terminal(&self) -> Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
         enable_raw_mode()?;
-
-        Ok(Self::make_terminal()?)
+        execute!(io::stdout(), EnterAlternateScreen)?;
+        Self::make_terminal()
     }
 
     pub(crate) fn release_terminal(
         mut terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
     ) -> Result<(), io::Error> {
-        execute!(terminal.backend_mut(), LeaveAlternateScreen,)?;
         terminal.show_cursor()?;
-        disable_raw_mode()?;
-
-        Ok(())
+        execute!(io::stdout(), LeaveAlternateScreen)?;
+        disable_raw_mode()
     }
 
     fn handle_event(&self, event: Event) -> bool {

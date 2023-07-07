@@ -48,7 +48,13 @@ async fn main() -> Result<()> {
     let ui = Ui::new();
 
     ui.event_loop(state.clone(), args.tick, async move {
-        extract_and_download(state, &args.url, &args.bin).await?;
+        extract_and_download(
+            state,
+            &args.url,
+            Arc::new(args.downloader),
+            Arc::new(args.downloader_options),
+        )
+        .await?;
         Ok::<(), Report>(())
     })
     .await?;
@@ -56,7 +62,15 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn extract_and_download(state: Arc<State>, url: &str, bin: &str) -> Result<()> {
+// TODO: Store a configured `Downloader` in `State`
+//       rather than pulling `bin` and `downloader_options`
+//       all the way through the call tree.
+async fn extract_and_download(
+    state: Arc<State>,
+    url: &str,
+    downloader: Arc<String>,
+    downloader_options: Arc<Vec<String>>,
+) -> Result<()> {
     let page_url = Url::parse(url)?;
     debug!("Parsed page URL: {page_url:#?}");
 
@@ -76,8 +90,20 @@ async fn extract_and_download(state: Arc<State>, url: &str, bin: &str) -> Result
     state.set_stage_processing().await;
 
     tokio::try_join!(
-        process_showcases(&response_text, &referer, bin, state.clone()),
-        process_simple_embeds(&response_text, &referer, bin, state.clone())
+        process_showcases(
+            &response_text,
+            &referer,
+            downloader.clone(),
+            downloader_options.clone(),
+            state.clone()
+        ),
+        process_simple_embeds(
+            &response_text,
+            &referer,
+            downloader,
+            downloader_options,
+            state.clone()
+        )
     )?;
 
     state.set_stage_done().await;
@@ -88,11 +114,14 @@ async fn extract_and_download(state: Arc<State>, url: &str, bin: &str) -> Result
 async fn process_simple_embeds(
     page_body: &str,
     referer: &str,
-    bin: &str,
+    downloader: Arc<String>,
+    downloader_options: Arc<Vec<String>>,
     state: Arc<State>,
 ) -> Result<()> {
     stream::iter(REGEX_VIDEO_IFRAME.captures_iter(page_body).map(Ok))
         .try_for_each_concurrent(None, |captures| {
+            let bin = downloader.clone();
+            let downloader_options = downloader_options.clone();
             let state = state.clone();
             async move {
                 debug!("{captures:#?}");
@@ -118,19 +147,12 @@ async fn process_simple_embeds(
                             },
                             async {
                                 let video = video.clone();
-                                let bin = bin.to_owned();
+                                let bin = bin.clone();
+                                let downloader_options = downloader_options.clone();
                                 tokio::spawn(async move {
                                     let url = video.url();
                                     info!("Download simple embed '{url}'...");
-                                    video.clone().download(&bin).await?;
-
-                                    // TODO: Make audio extraction depend on argument
-                                    info!("Extract opus audio for simple embed '{url}'...");
-                                    video.clone().extract_audio("opus").await?;
-
-                                    // TODO: Make audio extraction depend on argument
-                                    info!("Extract mp3 audio for simple embed '{url}'...");
-                                    video.extract_audio("mp3").await?;
+                                    video.clone().download(bin, downloader_options).await?;
 
                                     Ok::<(), Report>(())
                                 })
@@ -173,12 +195,15 @@ async fn extract_simple_embed_title(video: Arc<Video>, referer: &str) -> Result<
 async fn process_showcases(
     page_body: &str,
     referer: &str,
-    bin: &str,
+    downloader: Arc<String>,
+    downloader_options: Arc<Vec<String>>,
     state: Arc<State>,
 ) -> Result<()> {
     stream::iter(REGEX_SHOWCASE_IFRAME.captures_iter(page_body).map(Ok))
         .try_for_each_concurrent(None, |captures| {
             let referer = &referer;
+            let bin = downloader.clone();
+            let downloader_options = downloader_options.clone();
             let state = state.clone();
             async move {
                 debug!("{captures:#?}");
@@ -187,7 +212,14 @@ async fn process_showcases(
                     Some(embed_url_match) => {
                         let embed_url = htmlize::unescape_attribute(embed_url_match.as_str());
                         info!("Extract clips from showcase '{embed_url}'...");
-                        process_showcase_embed(embed_url.as_ref(), referer, bin, state).await
+                        process_showcase_embed(
+                            embed_url.as_ref(),
+                            referer,
+                            bin,
+                            downloader_options,
+                            state,
+                        )
+                        .await
                     }
                     None => bail!("Capture group did not match named 'embed_url'"),
                 }
@@ -201,7 +233,8 @@ async fn process_showcases(
 async fn process_showcase_embed(
     embed_url: &str,
     referer: &str,
-    bin: &str,
+    downloader: Arc<String>,
+    downloader_options: Arc<Vec<String>>,
     state: Arc<State>,
 ) -> Result<()> {
     let response_text = util::fetch_with_referer(embed_url, referer).await?;
@@ -235,9 +268,12 @@ async fn process_showcase_embed(
         .try_for_each_concurrent(None, |clip| async {
             let state = state.clone();
             let referer = referer.to_owned();
-            let bin = bin.to_owned();
-            tokio::spawn(async move { process_showcase_clip(&clip, &referer, &bin, state).await })
-                .await?
+            let downloader_options = downloader_options.clone();
+            let bin = downloader.clone();
+            tokio::spawn(async move {
+                process_showcase_clip(&clip, &referer, bin, downloader_options, state).await
+            })
+            .await?
         })
         .await?;
 
@@ -247,7 +283,8 @@ async fn process_showcase_embed(
 async fn process_showcase_clip(
     clip: &Value,
     referer: &str,
-    bin: &str,
+    downloader: Arc<String>,
+    downloader_options: Arc<Vec<String>>,
     state: Arc<State>,
 ) -> Result<()> {
     let config_url = clip
@@ -289,15 +326,10 @@ async fn process_showcase_clip(
             (*state).push_video(video.clone()).await;
 
             info!("Download showcase clip '{embed_url}'...");
-            video.clone().download(bin).await?;
-
-            // TODO: Make audio extraction depend on argument
-            info!("Extract opus audio for showcase clip '{embed_url}'...");
-            video.clone().extract_audio("opus").await?;
-
-            // TODO: Make audio extraction depend on argument
-            info!("Extract mp3 audio for showcase clip '{embed_url}'...");
-            video.extract_audio("mp3").await?;
+            video
+                .clone()
+                .download(downloader, downloader_options)
+                .await?;
         }
         None => {
             bail!("Could not extract embed URL from config 'video.embed_code' string (embed_url not captured)");

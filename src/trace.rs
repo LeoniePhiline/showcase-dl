@@ -8,7 +8,7 @@ use crate::args::Args;
 
 pub fn init(args: &Args) -> Result<WorkerGuard> {
     // TODO: Log into a buffer and display that in a bottom split pane.
-    let file_appender = tracing_appender::rolling::never(".", "vimeo-showcase.log");
+    let file_appender = tracing_appender::rolling::never(".", "showcase-dl.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
     tracing_subscriber::registry()

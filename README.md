@@ -84,7 +84,7 @@ Invoke `showcase-dl` with more `-v[v[v[v]]]` for more verbosity:
 Place the verbosity flag before the webpage URL, especially if using additional downloader options, e.g.:
 
 ```bash
-./target/release/showcase-dl -vvv <URL> -- --prefer-free-formats
+./target/release/showcase-dl -vvv "<URL>" -- --prefer-free-formats
 ```
 
 #### Selectively, using environment variable

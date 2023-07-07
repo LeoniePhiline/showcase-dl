@@ -36,7 +36,7 @@ static REGEX_SHOWCASE_IFRAME: Lazy<Regex> = Lazy::new(|| {
 static REGEX_EMBED_URL: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"src="(?P<embed_url>[^"]+)""#).unwrap());
 
-#[tokio::main(flavor = "multi_thread")]
+#[tokio::main]
 async fn main() -> Result<()> {
     color_eyre_install()?;
 

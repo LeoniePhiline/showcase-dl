@@ -56,32 +56,6 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn color_eyre_install() -> Result<()> {
-    // Replace the default `color_eyre::install()?` panic and error hooks.
-    // The new hooks release the captured terminal first. This prevents garbled backtrace prints.
-    let (panic_hook, eyre_hook) = color_eyre::config::HookBuilder::default().into_hooks();
-
-    // Replace `eyre_hook.install()?`.
-    let eyre_hook = eyre_hook.into_eyre_hook();
-    color_eyre::eyre::set_hook(Box::new(move |e| {
-        let terminal = Ui::make_terminal().expect("make terminal for error handler");
-        Ui::release_terminal(terminal).expect("release terminal for error handler");
-
-        eyre_hook(e)
-    }))?;
-
-    // Replace `panic_hook.install()`.
-    let panic_hook = panic_hook.into_panic_hook();
-    std::panic::set_hook(Box::new(move |panic_info| {
-        let terminal = Ui::make_terminal().expect("make terminal for panic handler");
-        Ui::release_terminal(terminal).expect("release terminal for panic handler");
-
-        panic_hook(panic_info);
-    }));
-
-    Ok(())
-}
-
 async fn extract_and_download(state: Arc<State>, url: &str, bin: &str) -> Result<()> {
     let page_url = Url::parse(url)?;
     debug!("Parsed page URL: {page_url:#?}");
@@ -329,6 +303,32 @@ async fn process_showcase_clip(
             bail!("Could not extract embed URL from config 'video.embed_code' string (embed_url not captured)");
         }
     }
+
+    Ok(())
+}
+
+fn color_eyre_install() -> Result<()> {
+    // Replace the default `color_eyre::install()?` panic and error hooks.
+    // The new hooks release the captured terminal first. This prevents garbled backtrace prints.
+    let (panic_hook, eyre_hook) = color_eyre::config::HookBuilder::default().into_hooks();
+
+    // Replace `eyre_hook.install()?`.
+    let eyre_hook = eyre_hook.into_eyre_hook();
+    color_eyre::eyre::set_hook(Box::new(move |e| {
+        let terminal = Ui::make_terminal().expect("make terminal for error handler");
+        Ui::release_terminal(terminal).expect("release terminal for error handler");
+
+        eyre_hook(e)
+    }))?;
+
+    // Replace `panic_hook.install()`.
+    let panic_hook = panic_hook.into_panic_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        let terminal = Ui::make_terminal().expect("make terminal for panic handler");
+        Ui::release_terminal(terminal).expect("release terminal for panic handler");
+
+        panic_hook(panic_info);
+    }));
 
     Ok(())
 }

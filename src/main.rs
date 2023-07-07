@@ -63,7 +63,7 @@ async fn main() -> Result<()> {
 }
 
 // TODO: Store a configured `Downloader` in `State`
-//       rather than pulling `bin` and `downloader_options`
+//       rather than pulling `downloader` and `downloader_options`
 //       all the way through the call tree.
 async fn extract_and_download(
     state: Arc<State>,
@@ -120,7 +120,7 @@ async fn process_simple_embeds(
 ) -> Result<()> {
     stream::iter(REGEX_VIDEO_IFRAME.captures_iter(page_body).map(Ok))
         .try_for_each_concurrent(None, |captures| {
-            let bin = downloader.clone();
+            let downloader = downloader.clone();
             let downloader_options = downloader_options.clone();
             let state = state.clone();
             async move {
@@ -147,12 +147,15 @@ async fn process_simple_embeds(
                             },
                             async {
                                 let video = video.clone();
-                                let bin = bin.clone();
+                                let downloader = downloader.clone();
                                 let downloader_options = downloader_options.clone();
                                 tokio::spawn(async move {
                                     let url = video.url();
                                     info!("Download simple embed '{url}'...");
-                                    video.clone().download(bin, downloader_options).await?;
+                                    video
+                                        .clone()
+                                        .download(downloader, downloader_options)
+                                        .await?;
 
                                     Ok::<(), Report>(())
                                 })
@@ -202,7 +205,7 @@ async fn process_showcases(
     stream::iter(REGEX_SHOWCASE_IFRAME.captures_iter(page_body).map(Ok))
         .try_for_each_concurrent(None, |captures| {
             let referer = &referer;
-            let bin = downloader.clone();
+            let downloader = downloader.clone();
             let downloader_options = downloader_options.clone();
             let state = state.clone();
             async move {
@@ -215,7 +218,7 @@ async fn process_showcases(
                         process_showcase_embed(
                             embed_url.as_ref(),
                             referer,
-                            bin,
+                            downloader,
                             downloader_options,
                             state,
                         )
@@ -269,9 +272,9 @@ async fn process_showcase_embed(
             let state = state.clone();
             let referer = referer.to_owned();
             let downloader_options = downloader_options.clone();
-            let bin = downloader.clone();
+            let downloader = downloader.clone();
             tokio::spawn(async move {
-                process_showcase_clip(&clip, &referer, bin, downloader_options, state).await
+                process_showcase_clip(&clip, &referer, downloader, downloader_options, state).await
             })
             .await?
         })

@@ -37,7 +37,7 @@ After all downloads have finished, the app will remain open. This way, you can j
 
 ### Raising log verbosity
 
-Using the `-v[v[v[v]]]` verbosity flag or the `RUST_LOG` environment variable, you can observe runtime information being written to `vimeo-showcase.log`.
+Using the `-v[v[v[v]]]` verbosity flag or the `RUST_LOG` environment variable, you can observe runtime information being written to `showcase-dl.log`.
 
 Errors are always reported.
 
@@ -71,7 +71,7 @@ RUST_LOG=showcase_dl=debug
 Use a split terminal, or a separate terminal window, to observe the live messages with (Linux, Mac):
 
 ```
-tail -f vimeo-showcase.log
+tail -f showcase-dl.log
 ```
 
 ### Custom downloader

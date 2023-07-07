@@ -12,10 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add `reqwest` and `hyper` to credentials.
+- Release terminal before printing error and panic stack traces.
 
 ### Changed
 
 - Clarify logging options in [`README.md`](https://github.com/LeoniePhiline/showcase-dl/blob/main/README.md).
+- Rename log file to `showcase-dl.log`.
+- Minor code clean-up.
+- Update locked dependencies.
+
+### Fixed
+
+- Print failing command in spawn error message.
 
 ## [0.6.1] - 2023-06-04
 

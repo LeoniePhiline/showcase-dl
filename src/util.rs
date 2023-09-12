@@ -23,7 +23,7 @@ pub async fn fetch_with_referer(url: &str, referer: Option<&str>) -> Result<Stri
                 USER_AGENT,
                 "Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:115.0esr) Gecko/20110619 Firefox/115.0esr",
             );
-        
+
         if let Some(referer_header_value) = referer_header_value {
             request = request.header(REFERER, referer_header_value);
         }

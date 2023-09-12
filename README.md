@@ -44,7 +44,7 @@ To start downloads, run the executable in your terminal. The only required argum
 
 To start downloads, run the executable in your terminal. The only required argument is the URL of the Vimeo showcase or simple player.
 
-If the showcase or simple player is referer restricted (only playable on the page it is embedded on), then use the `--referer` option to pass the embedding page's URL.
+If the showcase or simple player is referer-restricted (only playable on the page it is embedded on), then use the `--referer` option to pass the embedding page's URL.
 
 ```bash
 ./target/release/showcase-dl --referer "<URL of webpage containing embedded videos>" "<URL of showcase or simple player>"

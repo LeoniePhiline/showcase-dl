@@ -25,13 +25,32 @@ or at `<project folder>/target/release/showcase-dl.exe` on Windows.
 
 ### Usage
 
-To start downloads, run the executable in your terminal. The only required argument is the URL of the page containing the embedded showcases.
+After cloning the repository, enter the project directory. Then, compile the project.
 
 ```bash
 cd "<project folder>";
 cargo build --release;
+```
+
+#### Fetch all showcase and simple player clips embedded on a page
+
+To start downloads, run the executable in your terminal. The only required argument is the URL of the page containing the embedded showcases.
+
+```bash
 ./target/release/showcase-dl "<URL of webpage containing embedded videos>"
 ```
+
+#### Fetch a single showcase's or simple player's clip(s)
+
+To start downloads, run the executable in your terminal. The only required argument is the URL of the Vimeo showcase or simple player.
+
+If the showcase or simple player is referer restricted (only playable on the page it is embedded on), then use the `--referer` option to pass the embedding page's URL.
+
+```bash
+./target/release/showcase-dl --referer "<URL of webpage containing embedded videos>" "<URL of showcase or simple player>"
+```
+
+#### Download progress and quitting
 
 ![Download progress](/img/In%20progress%2C%20spaced.png)
 

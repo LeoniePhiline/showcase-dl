@@ -47,33 +47,16 @@ async fn main() -> Result<()> {
 
     let _appender_guard = trace::init(&args)?;
 
-    let state = Arc::new(State::new());
+    let state = Arc::new(State::new(args.downloader, args.downloader_options));
     let ui = Ui::new();
 
     ui.event_loop(state.clone(), args.tick, async move {
-        let downloader = Arc::new(args.downloader);
-        let downloader_options = Arc::new(args.downloader_options);
-
         if args.url.starts_with("https://vimeo.com/showcase/") {
-            process_showcase(
-                &args.url,
-                args.referer.as_deref(),
-                downloader,
-                downloader_options,
-                state,
-            )
-            .await?;
+            process_showcase(&args.url, args.referer.as_deref(), state).await?;
         } else if args.url.starts_with("https://player.vimeo.com/video/") {
-            process_simple_player(
-                &args.url,
-                args.referer.as_deref(),
-                downloader,
-                downloader_options,
-                state,
-            )
-            .await?;
+            process_simple_player(&args.url, args.referer.as_deref(), state).await?;
         } else {
-            extract_and_download_embeds(&args.url, downloader, downloader_options, state).await?;
+            extract_and_download_embeds(&args.url, state).await?;
         }
 
         Ok::<(), Report>(())
@@ -83,15 +66,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-// TODO: Store a configured `Downloader` in `State`
-//       rather than pulling `downloader` and `downloader_options`
-//       all the way through the call tree.
-async fn extract_and_download_embeds(
-    url: &str,
-    downloader: Arc<String>,
-    downloader_options: Arc<Vec<String>>,
-    state: Arc<State>,
-) -> Result<()> {
+async fn extract_and_download_embeds(url: &str, state: Arc<State>) -> Result<()> {
     let page_url = Url::parse(url)?;
     debug!("Parsed page URL: {page_url:#?}");
 
@@ -111,20 +86,8 @@ async fn extract_and_download_embeds(
     state.set_stage_processing().await;
 
     tokio::try_join!(
-        process_showcases(
-            &response_text,
-            referer.as_deref(),
-            downloader.clone(),
-            downloader_options.clone(),
-            state.clone()
-        ),
-        process_simple_embeds(
-            &response_text,
-            referer.as_deref(),
-            downloader,
-            downloader_options,
-            state.clone()
-        )
+        process_showcases(&response_text, referer.as_deref(), state.clone()),
+        process_simple_embeds(&response_text, referer.as_deref(), state.clone())
     )?;
 
     state.set_stage_done().await;
@@ -135,14 +98,10 @@ async fn extract_and_download_embeds(
 async fn process_simple_embeds(
     page_body: &str,
     referer: Option<&str>,
-    downloader: Arc<String>,
-    downloader_options: Arc<Vec<String>>,
     state: Arc<State>,
 ) -> Result<()> {
     stream::iter(REGEX_VIDEO_IFRAME.captures_iter(page_body).map(Ok))
         .try_for_each_concurrent(None, |captures| {
-            let downloader = downloader.clone();
-            let downloader_options = downloader_options.clone();
             let state = state.clone();
             async move {
                 debug!("{captures:#?}");
@@ -152,14 +111,7 @@ async fn process_simple_embeds(
                         let embed_url =
                             htmlize::unescape_attribute(embed_url_match.as_str()).into_owned();
 
-                        process_simple_player(
-                            &embed_url,
-                            referer,
-                            downloader,
-                            downloader_options,
-                            state,
-                        )
-                        .await?;
+                        process_simple_player(&embed_url, referer, state).await?;
 
                         Ok(())
                     }
@@ -175,8 +127,6 @@ async fn process_simple_embeds(
 async fn process_simple_player(
     player_url: &str,
     referer: Option<&str>,
-    downloader: Arc<String>,
-    downloader_options: Arc<Vec<String>>,
     state: Arc<State>,
 ) -> Result<()> {
     let video = Arc::new(Video::new(player_url, referer));
@@ -195,15 +145,10 @@ async fn process_simple_player(
         },
         async {
             let video = video.clone();
-            let downloader = downloader.clone();
-            let downloader_options = downloader_options.clone();
             tokio::spawn(async move {
                 let url = video.url();
                 info!("Download simple embed '{url}'...");
-                video
-                    .clone()
-                    .download(downloader, downloader_options)
-                    .await?;
+                video.clone().download(state).await?;
 
                 Ok::<(), Report>(())
             })
@@ -238,14 +183,10 @@ async fn extract_simple_embed_title(video: Arc<Video>, referer: Option<&str>) ->
 async fn process_showcases(
     page_body: &str,
     referer: Option<&str>,
-    downloader: Arc<String>,
-    downloader_options: Arc<Vec<String>>,
     state: Arc<State>,
 ) -> Result<()> {
     stream::iter(REGEX_SHOWCASE_IFRAME.captures_iter(page_body).map(Ok))
         .try_for_each_concurrent(None, |captures| {
-            let downloader = downloader.clone();
-            let downloader_options = downloader_options.clone();
             let state = state.clone();
             async move {
                 debug!("{captures:#?}");
@@ -254,14 +195,7 @@ async fn process_showcases(
                     Some(embed_url_match) => {
                         let embed_url = htmlize::unescape_attribute(embed_url_match.as_str());
                         info!("Extract clips from showcase '{embed_url}'...");
-                        process_showcase(
-                            embed_url.as_ref(),
-                            referer,
-                            downloader,
-                            downloader_options,
-                            state,
-                        )
-                        .await
+                        process_showcase(embed_url.as_ref(), referer, state).await
                     }
                     None => bail!("Capture group did not match named 'embed_url'"),
                 }
@@ -275,8 +209,6 @@ async fn process_showcases(
 async fn process_showcase(
     showcase_url: &str,
     referer: Option<&str>,
-    downloader: Arc<String>,
-    downloader_options: Arc<Vec<String>>,
     state: Arc<State>,
 ) -> Result<()> {
     let response_text = util::fetch_with_referer(showcase_url, referer).await?;
@@ -300,13 +232,8 @@ async fn process_showcase(
                 .try_for_each_concurrent(None, |clip| async {
                     let state = state.clone();
                     let referer = referer.map(ToOwned::to_owned);
-                    let downloader_options = downloader_options.clone();
-                    let downloader = downloader.clone();
-                    tokio::spawn(async move {
-                        process_showcase_clip(&clip, referer, downloader, downloader_options, state)
-                            .await
-                    })
-                    .await?
+                    tokio::spawn(async move { process_showcase_clip(&clip, referer, state).await })
+                        .await?
                 })
                 .await?;
         }
@@ -318,8 +245,6 @@ async fn process_showcase(
 async fn process_showcase_clip(
     clip: &Value,
     referer: Option<String>,
-    downloader: Arc<String>,
-    downloader_options: Arc<Vec<String>>,
     state: Arc<State>,
 ) -> Result<()> {
     let config_url = clip.dot_get::<String>("config")?.ok_or_else(|| {
@@ -361,10 +286,7 @@ async fn process_showcase_clip(
             (*state).push_video(video.clone()).await;
 
             info!("Download showcase clip '{embed_url}'...");
-            video
-                .clone()
-                .download(downloader, downloader_options)
-                .await?;
+            video.clone().download(state).await?;
         }
         None => {
             bail!("Could not extract embed URL from config 'video.embed_code' string (embed_url not captured)");

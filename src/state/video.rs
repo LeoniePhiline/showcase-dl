@@ -17,6 +17,8 @@ use tracing::{debug, error, trace};
 use crate::util::maybe_join;
 use progress::ProgressDetail;
 
+use super::State;
+
 pub mod progress;
 
 pub struct Video {
@@ -188,28 +190,24 @@ impl Video {
         self.output_file.read().await
     }
 
-    pub async fn download(
-        self: Arc<Self>,
-        downloader: Arc<String>,
-        downloader_options: Arc<Vec<String>>,
-    ) -> Result<()> {
+    pub async fn download(self: Arc<Self>, state: Arc<State>) -> Result<()> {
         self.set_stage_downloading().await;
 
         let cmd = format!(
             "{} --newline --no-colors{} {} '{}'",
-            downloader,
+            state.downloader,
             self.referer
                 .as_ref()
                 .map(|referer| { format!(" --add-header 'Referer:{}'", &referer) })
                 .unwrap_or_default(),
-            downloader_options.as_ref().join(" "),
+            state.downloader_options.join(" "),
             self.url()
         );
 
         debug!("Spawn: {cmd}");
         self.clone()
             .child_read_to_end({
-                let mut command = Command::new(downloader.as_ref());
+                let mut command = Command::new(&*state.downloader);
 
                 command
                     .kill_on_drop(true)
@@ -225,7 +223,7 @@ impl Video {
                 }
 
                 command
-                    .args(downloader_options.as_ref())
+                    .args(&*state.downloader_options)
                     .arg(self.url())
                     .spawn()
                     .wrap_err_with(|| format!("Command failed to start: {cmd}"))?

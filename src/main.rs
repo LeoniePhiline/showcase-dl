@@ -36,6 +36,9 @@ static REGEX_SHOWCASE_IFRAME: Lazy<Regex> = Lazy::new(|| {
 static REGEX_EMBED_URL: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"src="(?P<embed_url>[^"]+)""#).unwrap());
 
+static REGEX_SHOWCASE_CONFIG: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"dataForPlayer = (?P<showcase_config>\{.*?\});").unwrap());
+
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre_install()?;
@@ -242,43 +245,42 @@ async fn process_showcase_embed(
 ) -> Result<()> {
     let response_text = util::fetch_with_referer(embed_url, referer).await?;
 
-    let app_data_line = response_text
-        .lines()
-        .find(|line| line.contains("app-data"))
-        .wrap_err("Script tag 'app-data' not found")?;
-    trace!(app_data_line = %app_data_line);
+    let maybe_captures = REGEX_SHOWCASE_CONFIG.captures(&response_text);
 
-    let app_data_json = format!(
-        "{{{}}}",
-        app_data_line
-            .split_once('{')
-            .wrap_err("Could not front-split 'app-data'")?
-            .1
-            .rsplit_once('}')
-            .wrap_err("Could not back-split 'app-data'")?
-            .0
-    );
-    trace!(app_data_json = %app_data_json);
+    if let Some(captures) = maybe_captures {
+        if let Some(showcase_config) = captures.name("showcase_config") {
+            debug!(
+                "Parsing showcase config JSON: {:#?}",
+                showcase_config.as_str()
+            );
+            let data: Value = serde_json::from_str(showcase_config.as_str())?;
+            debug!(decoded_showcase_config = ?data);
 
-    let data: Value = serde_json::from_str(&app_data_json)?;
-    debug!(decoded_app_data = ?data);
-
-    // Query for `{ "clips": [...] }` array
-    let clips = data.dot_get::<Vec<Value>>("clips")?.ok_or_else(|| {
-        eyre!("Could not find 'clips' key in 'app-data', or 'clips' was not an array.")
-    })?;
-    stream::iter(clips.into_iter().map(Ok))
-        .try_for_each_concurrent(None, |clip| async {
-            let state = state.clone();
-            let referer = referer.to_owned();
-            let downloader_options = downloader_options.clone();
-            let downloader = downloader.clone();
-            tokio::spawn(async move {
-                process_showcase_clip(&clip, &referer, downloader, downloader_options, state).await
-            })
-            .await?
-        })
-        .await?;
+            // Query for `{ "clips": [...] }` array
+            let clips = data.dot_get::<Vec<Value>>("clips")?.ok_or_else(|| {
+                eyre!("Could not find 'clips' key in 'dataForPlayer', or 'clips' was not an array.")
+            })?;
+            stream::iter(clips.into_iter().map(Ok))
+                .try_for_each_concurrent(None, |clip| async {
+                    let state = state.clone();
+                    let referer = referer.to_owned();
+                    let downloader_options = downloader_options.clone();
+                    let downloader = downloader.clone();
+                    tokio::spawn(async move {
+                        process_showcase_clip(
+                            &clip,
+                            &referer,
+                            downloader,
+                            downloader_options,
+                            state,
+                        )
+                        .await
+                    })
+                    .await?
+                })
+                .await?;
+        }
+    }
 
     Ok(())
 }
@@ -290,9 +292,9 @@ async fn process_showcase_clip(
     downloader_options: Arc<Vec<String>>,
     state: Arc<State>,
 ) -> Result<()> {
-    let config_url = clip
-        .dot_get::<String>("config")?
-        .ok_or_else(|| eyre!("Could not read clip config URL from 'app-data.clips.[].config'."))?;
+    let config_url = clip.dot_get::<String>("config")?.ok_or_else(|| {
+        eyre!("Could not read clip config URL from 'dataForPlayer.clips.[].config'.")
+    })?;
 
     let client = Client::new();
     let response_text = client.get(config_url).send().await?.text().await?;

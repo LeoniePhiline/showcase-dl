@@ -214,7 +214,8 @@ impl Video {
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .arg("--newline")
-                    .arg("--no-colors");
+                    .arg("--no-colors")
+                    .arg("--legacy-server-connect");
 
                 if let Some(ref referer) = self.referer {
                     command

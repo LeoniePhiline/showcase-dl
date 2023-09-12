@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use color_eyre::{
-    eyre::{bail, eyre, ContextCompat, Result},
+    eyre::{bail, eyre, Result},
     Report,
 };
 use futures::{stream, TryStreamExt};

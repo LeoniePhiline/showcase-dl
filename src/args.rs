@@ -18,7 +18,11 @@ pub struct Args {
     #[arg(short, long, default_value_t = 50)]
     pub tick: u64,
 
-    /// URL of the target page, containing Vimeo showcase embeds
+    /// Referer URL - use if passing the URL of a Vimeo showcase or simple player with referer restriction, rather than a page containing embeds
+    #[arg(long)]
+    pub referer: Option<String>,
+
+    /// URL - Either the target page, containing Vimeo showcase embeds, or a Vimeo showcase URL (with --referer)
     #[arg()]
     pub url: String,
 

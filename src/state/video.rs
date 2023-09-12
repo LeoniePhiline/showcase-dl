@@ -22,7 +22,7 @@ pub mod progress;
 pub struct Video {
     stage: RwLock<Stage>,
     url: String,
-    referer: String,
+    referer: Option<String>,
     title: RwLock<Option<String>>,
     line: RwLock<Option<String>>,
     output_file: RwLock<Option<String>>,
@@ -67,19 +67,19 @@ static STAGE_EXTRACTING_AUDIO: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^\[ExtractAudio\]").unwrap());
 
 impl Video {
-    pub fn new(url: impl Into<String>, referer: impl Into<String>) -> Self {
-        Self::new_with_title(url.into(), referer.into(), None)
+    pub fn new(url: impl Into<String>, referer: Option<impl Into<String>>) -> Self {
+        Self::new_with_title(url.into(), referer.map(Into::into), None)
     }
 
     pub fn new_with_title(
         url: impl Into<String>,
-        referer: impl Into<String>,
+        referer: Option<impl Into<String>>,
         title: Option<String>,
     ) -> Self {
         Self {
             stage: RwLock::new(Stage::Initializing),
             url: url.into(),
-            referer: referer.into(),
+            referer: referer.map(Into::into),
             title: RwLock::new(title),
             line: RwLock::new(None),
             output_file: RwLock::new(None),
@@ -196,29 +196,40 @@ impl Video {
         self.set_stage_downloading().await;
 
         let cmd = format!(
-            "{} --newline --no-colors --add-header 'Referer:{}' {} '{}'",
+            "{} --newline --no-colors{} {} '{}'",
             downloader,
-            &self.referer,
+            self.referer
+                .as_ref()
+                .map(|referer| { format!(" --add-header 'Referer:{}'", &referer) })
+                .unwrap_or_default(),
             downloader_options.as_ref().join(" "),
             self.url()
         );
 
         debug!("Spawn: {cmd}");
         self.clone()
-            .child_read_to_end(
-                Command::new(downloader.as_ref())
+            .child_read_to_end({
+                let mut command = Command::new(downloader.as_ref());
+
+                command
                     .kill_on_drop(true)
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .arg("--newline")
-                    .arg("--no-colors")
-                    .arg("--add-header")
-                    .arg(format!("Referer:{}", self.referer))
+                    .arg("--no-colors");
+
+                if let Some(ref referer) = self.referer {
+                    command
+                        .arg("--add-header")
+                        .arg(format!("Referer:{}", referer));
+                }
+
+                command
                     .args(downloader_options.as_ref())
                     .arg(self.url())
                     .spawn()
-                    .wrap_err_with(|| format!("Command failed to start: {cmd}"))?,
-            )
+                    .wrap_err_with(|| format!("Command failed to start: {cmd}"))?
+            })
             .await?;
 
         self.set_stage_finished().await;

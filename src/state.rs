@@ -7,6 +7,9 @@ use video::Video;
 pub mod video;
 
 pub struct State {
+    pub downloader: String,
+    pub downloader_options: Vec<String>,
+
     stage: RwLock<Stage>,
     videos: RwLock<Vec<Arc<Video>>>,
 }
@@ -20,8 +23,11 @@ pub enum Stage {
 }
 
 impl State {
-    pub fn new() -> Self {
+    pub fn new(downloader: String, downloader_options: Vec<String>) -> Self {
         Self {
+            downloader,
+            downloader_options,
+
             stage: RwLock::new(Stage::Initializing),
             videos: RwLock::new(vec![]),
         }

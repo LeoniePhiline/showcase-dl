@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support vimeo links as input. Vimeo showcase and Vimeo player URLs can now be passed as downloadable URL.
   If the target is referer restricted, use the `--referer` command line option, passing the embedding page's URL.
 
+### Changed
+
+- Store `downloader` and `downloader_options`  in `State` rather than pulling them all the way through the call tree.
+
 ## [0.8.0] - 2023-09-12
 
 ### Added

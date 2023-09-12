@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Update dependencies.
+- Update showcase clips detection to latest player changes.
 
 ## [0.7.0] - 2023-07-07
 

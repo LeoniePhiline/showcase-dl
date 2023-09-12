@@ -45,11 +45,11 @@ pub struct VideoRead<'a> {
 }
 
 static RE_OUTPUT_FILE_DESTINATION: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"^\[(?:download|ExtractAudio)\] Destination: (?P<output_file>.+)$"#).unwrap()
+    Regex::new(r"^\[(?:download|ExtractAudio)\] Destination: (?P<output_file>.+)$").unwrap()
 });
 
 static RE_OUTPUT_FILE_ALREADY_DOWNLOADED: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"^\[download\] (?P<output_file>.+?) has already been downloaded$"#).unwrap()
+    Regex::new(r"^\[download\] (?P<output_file>.+?) has already been downloaded$").unwrap()
 });
 
 static RE_OUTPUT_FILE_MERGING: Lazy<Regex> = Lazy::new(|| {
@@ -57,14 +57,14 @@ static RE_OUTPUT_FILE_MERGING: Lazy<Regex> = Lazy::new(|| {
 });
 
 static RE_PERCENT_DONE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r#"^\[download\]\s+(?P<percent_done>[\d+\.]+?)%"#).unwrap());
+    Lazy::new(|| Regex::new(r"^\[download\]\s+(?P<percent_done>[\d+\.]+?)%").unwrap());
 
 static REGEX_DOWNLOAD_PROGRESS: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"^\[download\]\s+(?P<percent>[\d+\.]+?)% of\s+(?P<size>(?:~\s*)?[\d+\.]+?(?:[KMG]i)B)(?: at\s+(?P<speed>(?:(?:~\s*)?[\d+\.]+?(?:[KMG]i)?|Unknown )B/s))?(?: ETA\s+(?P<eta>(?:[\d:-]+|Unknown)))?(?: \(frag (?P<frag>\d+)/(?P<frag_total>\d+)\))?"#).unwrap()
+    Regex::new(r"^\[download\]\s+(?P<percent>[\d+\.]+?)% of\s+(?P<size>(?:~\s*)?[\d+\.]+?(?:[KMG]i)B)(?: at\s+(?P<speed>(?:(?:~\s*)?[\d+\.]+?(?:[KMG]i)?|Unknown )B/s))?(?: ETA\s+(?P<eta>(?:[\d:-]+|Unknown)))?(?: \(frag (?P<frag>\d+)/(?P<frag_total>\d+)\))?").unwrap()
 });
 
 static STAGE_EXTRACTING_AUDIO: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r#"^\[ExtractAudio\]"#).unwrap());
+    Lazy::new(|| Regex::new(r"^\[ExtractAudio\]").unwrap());
 
 impl Video {
     pub fn new(url: impl Into<String>, referer: impl Into<String>) -> Self {

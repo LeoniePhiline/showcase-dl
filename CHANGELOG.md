@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Allow pre-TLS 1.3 connections for the time being
+- Update dependencies.
 
 ## [0.8.1] - 2023-09-12
 

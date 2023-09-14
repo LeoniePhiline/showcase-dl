@@ -1,7 +1,7 @@
 use std::{process::Stdio, sync::Arc};
 
 use color_eyre::{
-    eyre::{Result, WrapErr},
+    eyre::{eyre, Result, WrapErr},
     Report,
 };
 use once_cell::sync::Lazy;
@@ -12,7 +12,7 @@ use tokio::{
     sync::{RwLock, RwLockReadGuard},
     task::JoinHandle,
 };
-use tracing::{debug, error, trace};
+use tracing::{debug, error, info, trace};
 
 use crate::util::maybe_join;
 use progress::ProgressDetail;
@@ -35,6 +35,7 @@ pub enum Stage {
     Downloading,
     ExtractingAudio,
     Finished,
+    Failed,
 }
 
 pub struct VideoRead<'a> {
@@ -99,6 +100,10 @@ impl Video {
 
     pub async fn set_stage_finished(&self) {
         *self.stage.write().await = Stage::Finished;
+    }
+
+    pub async fn set_stage_failed(&self) {
+        *self.stage.write().await = Stage::Failed;
     }
 
     pub async fn stage(&self) -> RwLockReadGuard<Stage> {
@@ -205,7 +210,8 @@ impl Video {
         );
 
         debug!("Spawn: {cmd}");
-        self.clone()
+        let child_exit = self
+            .clone()
             .child_read_to_end({
                 let mut command = Command::new(&*state.downloader);
 
@@ -229,9 +235,18 @@ impl Video {
                     .spawn()
                     .wrap_err_with(|| format!("Command failed to start: {cmd}"))?
             })
-            .await?;
+            .await;
 
-        self.set_stage_finished().await;
+        match child_exit {
+            Err(report) => {
+                error!("'{}' failed: {:?}", self.url, report);
+                self.set_stage_failed().await
+            }
+            Ok(_) => {
+                info!("'{}' finished.", self.url);
+                self.set_stage_finished().await
+            }
+        };
 
         Ok(())
     }
@@ -249,11 +264,16 @@ impl Video {
 
         let await_exit = async {
             tokio::spawn(async move {
-                // TODO: Inspect `ExitStatus`, set download to `Failed` if `!exit_status.success()`
-                child
-                    .wait()
-                    .await
-                    .wrap_err("yt-dlp command failed to run")?;
+                let exit_status = child.wait().await.wrap_err("Downloader failed to run")?;
+
+                if !exit_status.success() {
+                    return Err(match exit_status.code() {
+                        Some(status_code) => {
+                            eyre!("Downloader exited with status code {status_code}")
+                        }
+                        None => eyre!("Downloader terminated by signal"),
+                    });
+                }
 
                 Ok::<(), Report>(())
             })

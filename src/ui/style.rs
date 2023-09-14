@@ -50,5 +50,6 @@ fn video_stage_color(video_stage: &Stage) -> Color {
         Stage::Downloading => Color::LightYellow,
         Stage::ExtractingAudio => Color::LightBlue,
         Stage::Finished => Color::LightGreen,
+        Stage::Failed => Color::LightRed,
     }
 }

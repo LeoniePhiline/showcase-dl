@@ -51,13 +51,16 @@ async fn main() -> Result<()> {
     let ui = Ui::new();
 
     ui.event_loop(state.clone(), args.tick, async move {
-        if args.url.starts_with("https://vimeo.com/showcase/") {
-            process_showcase(&args.url, args.referer.as_deref(), state).await?;
-        } else if args.url.starts_with("https://player.vimeo.com/video/") {
-            process_simple_player(&args.url, args.referer.as_deref(), state).await?;
+        let url = Url::parse(&args.url)?;
+        debug!("Parsed page URL: {url:#?}");
+
+        if url.host_str().unwrap_or_default().ends_with("vimeo.com") {
+            download_from_player(url, args.referer.as_deref(), state.clone()).await?;
         } else {
-            extract_and_download_embeds(&args.url, state).await?;
+            extract_and_download_embeds(url, state.clone()).await?;
         }
+
+        state.set_stage_done().await;
 
         Ok::<(), Report>(())
     })
@@ -66,20 +69,31 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn extract_and_download_embeds(url: &str, state: Arc<State>) -> Result<()> {
-    let page_url = Url::parse(url)?;
-    debug!("Parsed page URL: {page_url:#?}");
+async fn download_from_player(url: Url, referer: Option<&str>, state: Arc<State>) -> Result<()> {
+    // TODO: Extract this (enclosing) block into a fn
+    info!("Extract vimeo embeds...");
+    state.set_stage_processing().await;
 
+    if url.as_str().starts_with("https://vimeo.com/showcase/") {
+        process_showcase(url.as_str(), referer, state.clone()).await?;
+    } else if url.as_str().starts_with("https://player.vimeo.com/video/") {
+        process_simple_player(url.as_str(), referer, state.clone()).await?;
+    }
+
+    Ok(())
+}
+
+async fn extract_and_download_embeds(url: Url, state: Arc<State>) -> Result<()> {
     let referer = Some(format!(
         "{}://{}/",
-        page_url.scheme(),
-        page_url.host_str().unwrap_or_default()
+        url.scheme(),
+        url.host_str().unwrap_or_default()
     ));
 
     info!("Fetch source page...");
-    state.set_stage_fetching_source(url).await;
+    state.set_stage_fetching_source(url.as_str()).await;
 
-    let response_text = Client::new().get(page_url).send().await?.text().await?;
+    let response_text = Client::new().get(url).send().await?.text().await?;
     trace!(page_response_text = %response_text);
 
     info!("Extract vimeo embeds...");
@@ -89,8 +103,6 @@ async fn extract_and_download_embeds(url: &str, state: Arc<State>) -> Result<()>
         process_showcases(&response_text, referer.as_deref(), state.clone()),
         process_simple_embeds(&response_text, referer.as_deref(), state.clone())
     )?;
-
-    state.set_stage_done().await;
 
     Ok(())
 }

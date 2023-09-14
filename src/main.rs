@@ -70,7 +70,6 @@ async fn main() -> Result<()> {
 }
 
 async fn download_from_player(url: Url, referer: Option<&str>, state: Arc<State>) -> Result<()> {
-    // TODO: Extract this (enclosing) block into a fn
     info!("Extract vimeo embeds...");
     state.set_stage_processing().await;
 

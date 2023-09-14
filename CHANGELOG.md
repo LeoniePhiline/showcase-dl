@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] <!-- release-date -->
 
+### Added
+
+- Handle child process exit, either terminating by signal, or exiting with non-zero status.
+  Prematurely exited downloader child processes will mark the corresponding download as 'Failed'.
+  Auto-retry can be added later.
+
 ### Changed
 
 - Allow pre-TLS 1.3 connections for the time being

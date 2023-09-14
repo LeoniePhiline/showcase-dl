@@ -271,7 +271,9 @@ impl Video {
                         Some(status_code) => {
                             eyre!("Downloader exited with status code {status_code}")
                         }
-                        None => eyre!("Downloader terminated by signal"),
+                        None => {
+                            eyre!("Downloader terminated by signal")
+                        }
                     });
                 }
 

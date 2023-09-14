@@ -1,6 +1,6 @@
 use std::{borrow::Cow, io, sync::Arc};
 
-use color_eyre::eyre::{bail, Result};
+use color_eyre::eyre::{bail, Report, Result};
 use crossterm::{
     event::{Event, EventStream, KeyCode, KeyEvent, KeyModifiers},
     execute,
@@ -43,66 +43,80 @@ impl Ui {
     ) -> Result<()> {
         let mut terminal = self.take_terminal()?;
 
-        // Stream input events (Keyboard, Mouse, Resize)
-        let mut event_stream = EventStream::new();
+        // This anonymous future helps capture any `Result::Err(Report)` which is propagated while the terminal is captured.
+        // If such an eyre Report is propagated to the end of `fn main()` while the terminal is still captured,
+        // then the backtrace print will be garbled.
+        // To remedy this situation, we funnel any Result returned while the terminal is captured into one place,
+        // then *release the terminal*, and only then propagate possible Result::Err values up the call tree.
+        let result_while_captured_terminal = async {
+            // Stream input events (Keyboard, Mouse, Resize)
+            let mut event_stream = EventStream::new();
 
-        // Prepare render tick interval
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(tick));
-        interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
+            // Prepare render tick interval
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(tick));
+            interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
 
-        self.render(&state, &mut terminal).await?;
+            self.render(&state, &mut terminal).await?;
 
-        let (abort_handle, abort_registration) = AbortHandle::new_pair();
-        let do_work_abortable = Abortable::new(
-            // Drive application process futures via closure.
-            do_work,
-            abort_registration,
-        );
+            let (abort_handle, abort_registration) = AbortHandle::new_pair();
+            let do_work_abortable = Abortable::new(
+                // Drive application process futures via closure.
+                do_work,
+                abort_registration,
+            );
 
-        tokio::try_join!(
-            async {
-                // Drive application process futures, aborting in reaction to user request.
-                match do_work_abortable.await {
-                    Ok(result) => result,
-                    // Swallow futures::future::Aborted error.
-                    Err(Aborted) => Ok(()),
-                }
-            },
-            async {
-                // Handle events or wait for next render tick.
-                loop {
-                    tokio::select! {
-                        biased;
-
-                        // Handle streamed input events as they occur
-                        maybe_event = event_stream.next() => match maybe_event {
-                            Some(Ok(event)) => if ! self.handle_event(event) { break },
-                            // Event reader poll error, e.g. initialization failure, or interrupt
-                            Some(Err(e)) => bail!(e),
-                            // End of event stream
-                            None => break,
-                        },
-
-                        // Note: We *might* also want to break out of the event loop
-                        //       as soon as `state.stage()` switches to `Stage::Done`.
-                        //       ...
-                        // TODO: Implement that? Or prefer keeping the app open
-                        //        until explicitly closed by the user? (Esc, Q or Ctrl+C)
-
-                        // Render every N milliseconds
-                        _ = interval.tick() => self.render(&state, &mut terminal).await?
+            tokio::try_join!(
+                async {
+                    // Drive application process futures, aborting in reaction to user request.
+                    match do_work_abortable.await {
+                        Ok(result) => result,
+                        // Swallow futures::future::Aborted error.
+                        Err(Aborted) => Ok(()),
                     }
+                },
+                async {
+                    // Handle events or wait for next render tick.
+                    loop {
+                        tokio::select! {
+                            biased;
+
+                            // Handle streamed input events as they occur
+                            maybe_event = event_stream.next() => match maybe_event {
+                                Some(Ok(event)) => if ! self.handle_event(event) { break },
+                                // Event reader poll error, e.g. initialization failure, or interrupt
+                                Some(Err(e)) => bail!(e),
+                                // End of event stream
+                                None => break,
+                            },
+
+                            // Note: We *might* also want to break out of the event loop
+                            //       as soon as `state.stage()` switches to `Stage::Done`.
+                            //       ...
+                            // TODO: Implement that? Or prefer keeping the app open
+                            //        until explicitly closed by the user? (Esc, Q or Ctrl+C)
+
+                            // Render every N milliseconds
+                            _ = interval.tick() => self.render(&state, &mut terminal).await?
+                        }
+                    }
+
+                    // Abort the application process futures as soon
+                    // as the user requests the app to terminate.
+                    abort_handle.abort();
+
+                    Ok(())
                 }
+            )?;
 
-                // Abort the application process futures as soon
-                // as the user requests the app to terminate.
-                abort_handle.abort();
+            Ok::<(), Report>(())
+        }
+        .await;
 
-                Ok(())
-            }
-        )?;
-
+        // First release the terminal, then propagate a possible `Err(Report)` from the `do_work` future.
         Self::release_terminal(terminal)?;
+
+        // Print a clean backtrace on failure.
+        result_while_captured_terminal?;
 
         Ok(())
     }

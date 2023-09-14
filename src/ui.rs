@@ -285,6 +285,7 @@ impl Ui {
                             VideoStage::Downloading => "Downloading...",
                             VideoStage::ExtractingAudio => "Extracting audio...",
                             VideoStage::Finished => "Finished!",
+                            VideoStage::Failed => "Failed!",
                         },
                         style::video_stage_style(video.stage()),
                     ));

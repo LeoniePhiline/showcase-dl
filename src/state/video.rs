@@ -249,6 +249,7 @@ impl Video {
 
         let await_exit = async {
             tokio::spawn(async move {
+                // TODO: Inspect `ExitStatus`, set download to `Failed` if `!exit_status.success()`
                 child
                     .wait()
                     .await

@@ -1,12 +1,12 @@
 # showcase-dl
 
-*A parallel downloader to create private backups of embedded vimeo videos and vimeo showcases.*
+*A parallel downloader to create private backups of embedded vimeo videos, vimeo showcases and vimeo events.*
 
 ## Why does this exist?
 
 The need arose to secure a private backup of a some embedded vimeo showcases.
 
-As it turned out, the almighty [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) did not support the creation of local backups from vimeo showcases.
+As it turned out, the almighty [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) did not support the creation of local backups from vimeo showcases (neither vimeo events).
 
 This tool is the result of some initial tinkering to try and automate the extraction of data necessary to download vimeo showcase videos anyway.
 
@@ -22,6 +22,8 @@ Then `git clone` this repository (or download as `.zip` file and extract), and r
 
 The finished executable binary will be found at `<project folder>/target/release/showcase-dl` on Linux or Mac,
 or at `<project folder>/target/release/showcase-dl.exe` on Windows.
+
+**Note:** Windows support is fully speculative and might fail to even compile. Use Linux. 🐧
 
 ### Usage
 
@@ -40,7 +42,7 @@ To start downloads, run the executable in your terminal. The only required argum
 ./target/release/showcase-dl "<URL of webpage containing embedded videos>"
 ```
 
-#### Fetch a single showcase's or simple player's clip(s)
+#### Fetch a single showcase's, event's or simple player's clip(s)
 
 To start downloads, run the executable in your terminal. The only required argument is the URL of the Vimeo showcase or simple player.
 
@@ -61,6 +63,14 @@ As long as you do not close the app ahead of time, your videos will be downloade
 ![Partially finished](/img/In%20progress%2C%20partially%20finished.png)
 
 After all downloads have finished, the app will remain open. This way, you can just go do other stuff, and come back to a nice status overview. Close the app with the `Q` or `Esc` key, or the combination `Ctrl+C`.
+
+**Note:**
+
+When downloading a Vimeo event or other live stream, then `yt-dlp` needs a few seconds to mux the downloaded stream into a video file.
+Therefore, after requesting exit with the `Q` or `Esc` key, or the combination `Ctrl+C`, the app will send an interrupt signal to `yt-dlp` to initiate the stream muxing.
+It will then wait for 5 seconds before shutting down completely and killing all remaining `yt-dlp` processes.
+
+Currently, during these 5 seconds, the UI freezes. In the future, this will be fixed by making sure the UI keeps on rendering while waiting for child processes to shut down.
 
 ### Passing options to the downloader and extracting audio
 

@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] <!-- release-date -->
 
+### Added
+
+- Add experimental support for Vimeo events.
+  Requesting exit (Q, Esc, Ctrl-C) will now wait 5 seconds before quitting,
+  to allow the downloader to mux event live streams before terminating.
+  During these 5 seconds the UI freezes. In the future it will be made to keep rendering.
+
 ### Changed
 
 - Refactor existing functionality into modules for future maintainability.
@@ -30,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Support vimeo links as input. Vimeo showcase and Vimeo player URLs can now be passed as downloadable URL.
+- Support Vimeo links as input. Vimeo showcase and Vimeo player URLs can now be passed as downloadable URL.
   If the target is referer restricted, use the `--referer` command line option, passing the embedding page's URL.
   Closes [#19](https://github.com/LeoniePhiline/showcase-dl/issues/19).
 

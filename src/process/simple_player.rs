@@ -26,7 +26,7 @@ pub async fn process_simple_player(
             let video = video.clone();
             let referer = referer.map(ToOwned::to_owned);
             tokio::spawn(async move {
-                debug!("Fetch title for simple embed '{}'...", video.url());
+                debug!("Fetch title for simple player '{}'...", video.url());
                 extract_simple_player_title(video, referer.as_deref()).await?;
                 Ok::<(), Report>(())
             })
@@ -36,7 +36,7 @@ pub async fn process_simple_player(
             let video = video.clone();
             tokio::spawn(async move {
                 let url = video.url();
-                info!("Download simple embed '{url}'...");
+                info!("Download simple player '{url}'...");
                 video.clone().download(state).await?;
 
                 Ok::<(), Report>(())
@@ -48,7 +48,6 @@ pub async fn process_simple_player(
     Ok(())
 }
 
-// TODO: pub?
 async fn extract_simple_player_title(video: Arc<Video>, referer: Option<&str>) -> Result<()> {
     let response_text = util::fetch_with_referer(video.url(), referer).await?;
 
@@ -60,7 +59,7 @@ async fn extract_simple_player_title(video: Arc<Video>, referer: Option<&str>) -
         if let Some(title_match) = captures.name("title") {
             let matched_title = htmlize::unescape(title_match.as_str());
             info!(
-                "Matched title '{matched_title}' for simple embed '{}'",
+                "Matched title '{matched_title}' for simple player '{}'",
                 video.url()
             );
             video.update_title(matched_title.into_owned()).await;

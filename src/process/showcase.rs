@@ -70,7 +70,7 @@ pub async fn process_showcase(
 
             // Query for `{ "clips": [...] }` array
             let clips = data.dot_get::<Vec<Value>>("clips")?.ok_or_else(|| {
-                eyre!("Could not find 'clips' key in 'dataForPlayer', or 'clips' was not an array. If you are passing a Vimeo URL, then try providing the embedding page URL via the '--referer' option.")
+                eyre!("could not find 'clips' key in 'dataForPlayer', or 'clips' was not an array (hint: if you are passing a Vimeo URL, then try providing the embedding page URL via the '--referer' option)")
             })?;
             stream::iter(clips.into_iter().map(Ok))
                 .try_for_each_concurrent(None, |clip| async {
@@ -92,7 +92,7 @@ async fn process_showcase_clip(
     state: Arc<State>,
 ) -> Result<()> {
     let config_url = clip.dot_get::<String>("config")?.ok_or_else(|| {
-        eyre!("Could not read clip config URL from 'dataForPlayer.clips.[].config'.")
+        eyre!("could not read clip config URL from 'dataForPlayer.clips.[].config'")
     })?;
 
     let client = Client::new();
@@ -104,15 +104,13 @@ async fn process_showcase_clip(
 
     let embed_code = config
         .dot_get::<String>("video.embed_code")?
-        .ok_or_else(|| {
-            eyre!("Could not extract clip embed code 'video.embed_code' from config.")
-        })?;
+        .ok_or_else(|| eyre!("could not extract clip embed code 'video.embed_code' from config"))?;
 
     debug!("config embed_code: {embed_code:#?}");
 
     let captures = REGEX_EMBED_URL.captures(&embed_code).ok_or_else(|| {
         eyre!(
-            "Could not extract embed URL from config 'video.embed_code' string (no regex captures)"
+            "could not extract embed URL from config 'video.embed_code' string (no regex captures)"
         )
     })?;
 

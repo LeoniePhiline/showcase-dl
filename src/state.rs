@@ -1,8 +1,11 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
+use color_eyre::eyre::Result;
+use futures::{stream, StreamExt, TryStreamExt};
 use tokio::sync::{RwLock, RwLockReadGuard};
+use tracing::{debug, info};
 
-use self::video::Video;
+use self::video::{Video, VideoRead};
 
 pub mod video;
 
@@ -20,6 +23,7 @@ pub enum Stage {
     Processing,
     // TODO: Semantic detail: Rename to `Finished` or keep at `Done`?
     Done,
+    ShuttingDown,
 }
 
 impl State {
@@ -56,5 +60,46 @@ impl State {
 
     pub async fn videos(&self) -> RwLockReadGuard<Vec<Arc<Video>>> {
         self.videos.read().await
+    }
+
+    pub async fn initiate_shutdown(&self) -> Result<()> {
+        info!("Initiating shutdown.");
+
+        // Set flag to refuse accepting new downloads (spawning new children).
+        *self.stage.write().await = Stage::ShuttingDown;
+
+        let videos = self.videos().await;
+
+        // No need to terminate children and wait if all videos have finished downloading or failed.
+        // Determine if interrupt and wait is necessary.
+        let needs_interrupt = stream::iter((*videos).iter())
+            .any(|video| async {
+                // Is any download *not* yet finished or failed?
+                // Then we will send an interrupt signal and wait for a few seconds
+                // before reaping the remaining child processes.
+                !matches!(
+                    *video.stage().await,
+                    self::video::Stage::Finished | self::video::Stage::Failed
+                )
+            })
+            .await;
+
+        if needs_interrupt {
+            debug!("Sending SIGINT to child processes.");
+
+            // Send SIGINT to all existing children.
+            for video in (*videos).iter() {
+                (*video).shutdown().await?;
+            }
+
+            // Then wait for 5 seconds for all children to self-terminate.
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        }
+
+        Ok(())
+    }
+
+    pub async fn is_shutting_down(&self) -> bool {
+        matches!(*self.stage.read().await, Stage::ShuttingDown)
     }
 }

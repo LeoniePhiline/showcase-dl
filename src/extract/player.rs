@@ -19,9 +19,10 @@ pub async fn download_from_player(
     } else if url.as_str().starts_with("https://player.vimeo.com/video/") {
         crate::process::simple_player::process_simple_player(url.as_str(), referer, state.clone())
             .await?;
-    } /*else if url.as_str().starts_with("https://vimeo.com/event/") {
-              process_event(url.as_str(), state.clone()).await?; // No referer necessary.
-          }
-      */
+    } else if url.as_str().starts_with("https://vimeo.com/event/") {
+        crate::process::event::process_event(url.as_str(), state.clone()).await?;
+        // No referer necessary.
+    }
+
     Ok(())
 }

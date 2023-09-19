@@ -82,7 +82,14 @@ impl Ui {
 
                             // Handle streamed input events as they occur
                             maybe_event = event_stream.next() => match maybe_event {
-                                Some(Ok(event)) => if ! self.handle_event(event) { break },
+                                // Shutdown on request by breaking out of the event loop
+                                Some(Ok(event)) => if ! self.handle_event(event) {
+                                    // Refuse to start new downloads and send SIGINT to existing children.
+                                    // TODO: Keep rendering while waiting for children to terminate!
+                                    state.initiate_shutdown().await?;
+
+                                    break
+                                },
                                 // Event reader poll error, e.g. initialization failure, or interrupt
                                 Some(Err(e)) => bail!(e),
                                 // End of event stream
@@ -188,6 +195,7 @@ impl Ui {
             }
             Stage::Processing => Cow::Borrowed(" VIMEO SHOWCASE DOWNLOAD "),
             Stage::Done => Cow::Borrowed(" FINISHED! "),
+            Stage::ShuttingDown => Cow::Borrowed(" SHUTTING DOWN - PLEASE WAIT ... "),
         };
 
         // Acquire read guards for all videos, to render full state.
@@ -254,6 +262,7 @@ impl Ui {
 
             for (i, video) in (*videos_read).iter().enumerate() {
                 // TODO: Create a video widget?
+                // TODO: Make video widget selectable, expose pause, continue, stop (SIGINT), retry
                 // TODO: Create a scrollable(!) "list of videos" widget
 
                 let chunk_start = 1 + i * layout::CHUNKS_PER_VIDEO;

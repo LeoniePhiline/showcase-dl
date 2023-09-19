@@ -1,9 +1,11 @@
-use std::{process::Stdio, sync::Arc};
+use std::{num::NonZeroU32, process::Stdio, sync::Arc};
 
 use color_eyre::{
     eyre::{eyre, Result, WrapErr},
     Report,
 };
+use nix::sys::signal::{self, Signal};
+use nix::unistd::Pid;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use tokio::{
@@ -12,7 +14,7 @@ use tokio::{
     sync::{RwLock, RwLockReadGuard},
     task::JoinHandle,
 };
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info, trace, warn};
 
 use crate::util::maybe_join;
 use progress::ProgressDetail;
@@ -21,6 +23,7 @@ use super::State;
 
 pub mod progress;
 
+#[derive(Debug)]
 pub struct Video {
     stage: RwLock<Stage>,
     url: String,
@@ -29,7 +32,10 @@ pub struct Video {
     line: RwLock<Option<String>>,
     output_file: RwLock<Option<String>>,
     percent_done: RwLock<Option<f64>>,
+    process_id: RwLock<Option<u32>>,
 }
+
+#[derive(Clone, Copy, Debug)]
 pub enum Stage {
     Initializing,
     Downloading,
@@ -87,6 +93,7 @@ impl Video {
             line: RwLock::new(None),
             output_file: RwLock::new(None),
             percent_done: RwLock::new(None),
+            process_id: RwLock::new(None),
         }
     }
 
@@ -196,6 +203,12 @@ impl Video {
     }
 
     pub async fn download(self: Arc<Self>, state: Arc<State>) -> Result<()> {
+        if state.is_shutting_down().await {
+            warn!("Refusing to start a new download during shutdown.");
+            // Not an error.
+            return Ok(());
+        }
+
         self.set_stage_downloading().await;
 
         let cmd = format!(
@@ -229,11 +242,15 @@ impl Video {
                         .arg(format!("Referer:{}", referer));
                 }
 
-                command
+                let child = command
                     .args(&*state.downloader_options)
                     .arg(self.url())
                     .spawn()
-                    .wrap_err_with(|| format!("Command failed to start: {cmd}"))?
+                    .wrap_err_with(|| format!("Command failed to start: {cmd}"))?;
+
+                *self.process_id.write().await = child.id();
+
+                child
             })
             .await;
 
@@ -265,6 +282,8 @@ impl Video {
         let await_exit = async {
             tokio::spawn(async move {
                 let exit_status = child.wait().await.wrap_err("Downloader failed to run")?;
+
+                *self.process_id.write().await = None;
 
                 if !exit_status.success() {
                     return Err(match exit_status.code() {
@@ -334,6 +353,29 @@ impl Video {
             output_file: self.output_file().await,
             percent_done: self.percent_done().await,
         }
+    }
+
+    pub async fn shutdown(&self) -> Result<()> {
+        let process_id = match *self.process_id.read().await {
+            Some(process_id) => process_id,
+            None => return Ok(()),
+        };
+
+        debug!("Shutting down child process {process_id}");
+
+        *self.process_id.write().await = None;
+
+        // Assert non-zero process ID, as for `kill 0`, the signal will be sent
+        // to all processes whose group ID is equal to the process group ID of the sender.
+        let non_zero: NonZeroU32 = process_id.try_into()?;
+
+        // Safely truncate u32 to i32.
+        let raw_pid: i32 = non_zero.get().try_into()?;
+
+        trace!("Sending SIGINT to child process {raw_pid}");
+        signal::kill(Pid::from_raw(raw_pid), Signal::SIGINT)?;
+
+        Ok(())
     }
 }
 

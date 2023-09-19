@@ -361,7 +361,7 @@ impl Video {
             None => return Ok(()),
         };
 
-        debug!("Shutting down child process {process_id}");
+        debug!("Shutting down child process {process_id}.");
 
         *self.process_id.write().await = None;
 
@@ -372,7 +372,7 @@ impl Video {
         // Safely truncate u32 to i32.
         let raw_pid: i32 = non_zero.get().try_into()?;
 
-        trace!("Sending SIGINT to child process {raw_pid}");
+        trace!("Sending SIGINT to child process {raw_pid}.");
         signal::kill(Pid::from_raw(raw_pid), Signal::SIGINT)?;
 
         Ok(())

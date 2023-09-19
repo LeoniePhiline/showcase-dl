@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tokio::sync::{RwLock, RwLockReadGuard};
 
-use video::Video;
+use self::video::Video;
 
 pub mod video;
 

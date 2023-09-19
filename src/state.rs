@@ -1,11 +1,11 @@
 use std::{sync::Arc, time::Duration};
 
 use color_eyre::eyre::Result;
-use futures::{stream, StreamExt, TryStreamExt};
+use futures::{stream, StreamExt};
 use tokio::sync::{RwLock, RwLockReadGuard};
 use tracing::{debug, info};
 
-use self::video::{Video, VideoRead};
+use self::video::Video;
 
 pub mod video;
 

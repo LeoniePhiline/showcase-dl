@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use color_eyre::{
-    eyre::{eyre, Result},
-};
+use color_eyre::eyre::{eyre, Result};
 use json_dotpath::DotPaths;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -10,9 +8,7 @@ use reqwest::{header::AUTHORIZATION, Client, ClientBuilder};
 use serde_json::Value;
 use tracing::{debug, trace};
 
-use crate::{
-    state::{State},
-};
+use crate::state::State;
 
 static REGEX_EVENT_URL_PARAMS: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"https://vimeo.com/event/(?P<event_id>\d+)/(?P<event_hash>[\da-f]+)").unwrap()

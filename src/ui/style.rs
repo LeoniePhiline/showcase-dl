@@ -47,8 +47,8 @@ pub fn gauge_style(video_stage: &Stage) -> Style {
 fn video_stage_color(video_stage: &Stage) -> Color {
     match video_stage {
         Stage::Initializing => Color::LightCyan,
-        Stage::Downloading => Color::LightYellow,
-        Stage::ExtractingAudio => Color::LightBlue,
+        Stage::Running { .. } => Color::LightYellow,
+        Stage::ShuttingDown { .. } => Color::LightBlue,
         Stage::Finished => Color::LightGreen,
         Stage::Failed => Color::LightRed,
     }

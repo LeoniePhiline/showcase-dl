@@ -15,7 +15,7 @@ pub struct Args {
     pub downloader: String,
 
     /// UI refresh interval in milliseconds
-    #[arg(short, long, default_value_t = 50)]
+    #[arg(short, long, default_value_t = 25)]
     pub tick: u64,
 
     /// Referer URL - use if passing the URL of a Vimeo showcase or simple player with referer restriction, rather than a page containing embeds

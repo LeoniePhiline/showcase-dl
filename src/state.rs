@@ -1,8 +1,8 @@
 use std::{sync::Arc, time::Duration};
 
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{eyre, Result};
 use futures::{stream, StreamExt};
-use tokio::sync::{RwLock, RwLockReadGuard};
+use tokio::sync::{oneshot, RwLock, RwLockReadGuard};
 use tracing::{debug, info};
 
 use self::video::Video;
@@ -62,41 +62,52 @@ impl State {
         self.videos.read().await
     }
 
-    pub async fn initiate_shutdown(&self) -> Result<()> {
+    pub async fn initiate_shutdown(&self, tx_shutdown_complete: oneshot::Sender<()>) -> Result<()> {
         info!("Initiating shutdown.");
 
         // Set flag to refuse accepting new downloads (spawning new children).
         *self.stage.write().await = Stage::ShuttingDown;
 
+        debug!("Sending SIGINT to child processes.");
+
+        // Send SIGINT to all existing children.
+        //
+        // This causes the downloader to initiate clean shutdown
+        // by muxing partially downloaded video and audio streams.
+        let videos = self.videos().await;
+        for video in (*videos).iter() {
+            (*video).initiate_shutdown().await?;
+        }
+        drop(videos);
+
+        // Then check every 50ms if all children have terminated.
+        while !self.all_children_terminated().await {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+
+        // Send shutdown-complete signal back to the UI's render loop.
+        tx_shutdown_complete
+            .send(())
+            .map_err(|_| eyre!("failed sending shutdown-complete signal"))?;
+
+        Ok(())
+    }
+
+    async fn all_children_terminated(&self) -> bool {
         let videos = self.videos().await;
 
-        // No need to terminate children and wait if all videos have finished downloading or failed.
-        // Determine if interrupt and wait is necessary.
-        let needs_interrupt = stream::iter((*videos).iter())
-            .any(|video| async {
+        // Determine if all children have either finished or failed.
+        stream::iter((*videos).iter())
+            .all(|video| async {
                 // Is any download *not* yet finished or failed?
-                // Then we will send an interrupt signal and wait for a few seconds
-                // before reaping the remaining child processes.
-                !matches!(
+                // Then we will send an interrupt signal
+                // and wait for a few seconds before retrying.
+                matches!(
                     *video.stage().await,
                     self::video::Stage::Finished | self::video::Stage::Failed
                 )
             })
-            .await;
-
-        if needs_interrupt {
-            debug!("Sending SIGINT to child processes.");
-
-            // Send SIGINT to all existing children.
-            for video in (*videos).iter() {
-                (*video).shutdown().await?;
-            }
-
-            // Then wait for 5 seconds for all children to self-terminate.
-            tokio::time::sleep(Duration::from_secs(5)).await;
-        }
-
-        Ok(())
+            .await
     }
 
     pub async fn is_shutting_down(&self) -> bool {

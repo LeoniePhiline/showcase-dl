@@ -68,9 +68,7 @@ After all downloads have finished, the app will remain open. This way, you can j
 
 When downloading a Vimeo event or other live stream, then `yt-dlp` needs a few seconds to mux the downloaded stream into a video file.
 Therefore, after requesting exit with the `Q` or `Esc` key, or the combination `Ctrl+C`, the app will send an interrupt signal to `yt-dlp` to initiate the stream muxing.
-It will then wait for 5 seconds before shutting down completely and killing all remaining `yt-dlp` processes.
-
-Currently, during these 5 seconds, the UI freezes. In the future, this will be fixed by making sure the UI keeps on rendering while waiting for child processes to shut down.
+It will then wait for all downloader processes to gracefully quit before shutting down completely.
 
 ### Passing options to the downloader and extracting audio
 

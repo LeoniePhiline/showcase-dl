@@ -18,7 +18,8 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Gauge, Row, Table},
     Terminal,
 };
-use tokio::{sync::RwLock, time::MissedTickBehavior};
+use tokio::{sync::oneshot, sync::RwLock, time::MissedTickBehavior};
+use tracing::error;
 
 use crate::state::{
     video::{progress::ProgressDetail, Stage as VideoStage, VideoRead},
@@ -75,20 +76,38 @@ impl Ui {
                     }
                 },
                 async {
+                    let (tx_shutdown_complete, mut rx_shutdown_complete) = oneshot::channel::<()>();
+                    let mut shutdown_signal = Some(tx_shutdown_complete);
+
                     // Handle events or wait for next render tick.
                     loop {
                         tokio::select! {
                             biased;
 
+                            _ = &mut rx_shutdown_complete => break,
+
                             // Handle streamed input events as they occur
                             maybe_event = event_stream.next() => match maybe_event {
+
                                 // Shutdown on request by breaking out of the event loop
                                 Some(Ok(event)) => if ! self.handle_event(event) {
-                                    // Refuse to start new downloads and send SIGINT to existing children.
-                                    // TODO: Keep rendering while waiting for children to terminate!
-                                    state.initiate_shutdown().await?;
 
-                                    break
+                                    // Intiate shutdown only once, silently ignore user shutdown requests
+                                    // while awaiting child processes muxing livestream data.
+                                    if let Some(tx_shutdown_complete) = shutdown_signal.take() {
+
+                                        // Refuse to start new downloads and send SIGINT to existing children.
+                                        // Initiate shutdown on a new task, then keep looping & rendering.
+                                        let state = state.clone();
+                                        tokio::spawn(
+                                            async move {
+                                                match state.initiate_shutdown(tx_shutdown_complete).await {
+                                                    Ok(()) => {},
+                                                    Err(e) => error!("{e}"),
+                                                }
+                                             }
+                                        );
+                                    }
                                 },
                                 // Event reader poll error, e.g. initialization failure, or interrupt
                                 Some(Err(e)) => bail!(e),
@@ -305,8 +324,8 @@ impl Ui {
                     row.push(Span::styled(
                         match video.stage() {
                             VideoStage::Initializing => "Intializing...",
-                            VideoStage::Downloading => "Downloading...",
-                            VideoStage::ExtractingAudio => "Extracting audio...",
+                            VideoStage::Running { .. } => "Running...",
+                            VideoStage::ShuttingDown { .. } => "Shutting down...",
                             VideoStage::Finished => "Finished!",
                             VideoStage::Failed => "Failed!",
                         },
@@ -387,7 +406,6 @@ impl Ui {
             // When a video is already present before starting the app,
             // then this video will be finished without `video.percent_done`
             // ever having been set. In that case, display 100 % right away.
-            VideoStage::ExtractingAudio => 100.0,
             VideoStage::Finished => 100.0,
             _ => 0.0,
         }

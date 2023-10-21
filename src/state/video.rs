@@ -23,6 +23,7 @@ use super::State;
 
 pub mod progress;
 
+// TODO: Consider wrapping the entire Video in an RwLock or Mutex, rather than the individual fields.
 #[derive(Debug)]
 pub struct Video {
     stage: RwLock<Stage>,
@@ -32,14 +33,13 @@ pub struct Video {
     line: RwLock<Option<String>>,
     output_file: RwLock<Option<String>>,
     percent_done: RwLock<Option<f64>>,
-    process_id: RwLock<Option<u32>>,
 }
 
 #[derive(Clone, Copy, Debug)]
 pub enum Stage {
     Initializing,
-    Downloading,
-    ExtractingAudio,
+    Running { process_id: u32 },
+    ShuttingDown { process_id: u32 },
     Finished,
     Failed,
 }
@@ -72,9 +72,6 @@ static REGEX_DOWNLOAD_PROGRESS: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^\[download\]\s+(?P<percent>[\d+\.]+?)% of\s+(?P<size>(?:~\s*)?[\d+\.]+?(?:[KMG]i)B)(?: at\s+(?P<speed>(?:(?:~\s*)?[\d+\.]+?(?:[KMG]i)?|Unknown )B/s))?(?: ETA\s+(?P<eta>(?:[\d:-]+|Unknown)))?(?: \(frag (?P<frag>\d+)/(?P<frag_total>\d+)\))?").unwrap()
 });
 
-static STAGE_EXTRACTING_AUDIO: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^\[ExtractAudio\]").unwrap());
-
 impl Video {
     pub fn new(url: impl Into<String>, referer: Option<impl Into<String>>) -> Self {
         Self::new_with_title(url.into(), referer.map(Into::into), None)
@@ -93,16 +90,15 @@ impl Video {
             line: RwLock::new(None),
             output_file: RwLock::new(None),
             percent_done: RwLock::new(None),
-            process_id: RwLock::new(None),
         }
     }
 
-    pub async fn set_stage_downloading(&self) {
-        *self.stage.write().await = Stage::Downloading;
+    pub async fn set_stage_running(&self, process_id: u32) {
+        *self.stage.write().await = Stage::Running { process_id };
     }
 
-    pub async fn set_stage_extracting_audio(&self) {
-        *self.stage.write().await = Stage::ExtractingAudio;
+    pub async fn set_stage_shutting_down(&self, process_id: u32) {
+        *self.stage.write().await = Stage::ShuttingDown { process_id };
     }
 
     pub async fn set_stage_finished(&self) {
@@ -141,10 +137,6 @@ impl Video {
     pub async fn update_line(&self, new_line: String) {
         self.extract_output_file(&new_line).await;
         self.extract_percent_done(&new_line).await;
-
-        if STAGE_EXTRACTING_AUDIO.is_match(&new_line) {
-            self.set_stage_extracting_audio().await;
-        }
 
         // Store the line to ref to it for size, speed and ETA ranges.
         let mut line = self.line.write().await;
@@ -209,8 +201,6 @@ impl Video {
             return Ok(());
         }
 
-        self.set_stage_downloading().await;
-
         let cmd = format!(
             "{} --newline --no-colors{} {} '{}'",
             state.downloader,
@@ -248,7 +238,9 @@ impl Video {
                     .spawn()
                     .wrap_err_with(|| format!("Command failed to start: {cmd}"))?;
 
-                *self.process_id.write().await = child.id();
+                if let Some(process_id) = child.id() {
+                    self.set_stage_running(process_id).await;
+                }
 
                 child
             })
@@ -264,6 +256,10 @@ impl Video {
                 self.set_stage_finished().await
             }
         };
+
+        // TODO: Could send child shutdown complete signal here:
+        //       During shutdown, we could use child shutdown-complete signals,
+        //       rather than waiting and regularly checking for all children having terminated.
 
         Ok(())
     }
@@ -282,8 +278,6 @@ impl Video {
         let await_exit = async {
             tokio::spawn(async move {
                 let exit_status = child.wait().await.wrap_err("Downloader failed to run")?;
-
-                *self.process_id.write().await = None;
 
                 if !exit_status.success() {
                     return Err(match exit_status.code() {
@@ -355,25 +349,23 @@ impl Video {
         }
     }
 
-    pub async fn shutdown(&self) -> Result<()> {
-        let process_id = match *self.process_id.read().await {
-            Some(process_id) => process_id,
-            None => return Ok(()),
-        };
+    pub async fn initiate_shutdown(&self) -> Result<()> {
+        let stage = *self.stage().await;
+        if let Stage::Running { process_id } = stage {
+            debug!("Shutting down child process {process_id}.");
 
-        debug!("Shutting down child process {process_id}.");
+            self.set_stage_shutting_down(process_id).await;
 
-        *self.process_id.write().await = None;
+            // Assert non-zero process ID, as for `kill 0`, the signal will be sent
+            // to all processes whose group ID is equal to the process group ID of the sender.
+            let non_zero: NonZeroU32 = process_id.try_into()?;
 
-        // Assert non-zero process ID, as for `kill 0`, the signal will be sent
-        // to all processes whose group ID is equal to the process group ID of the sender.
-        let non_zero: NonZeroU32 = process_id.try_into()?;
+            // Safely truncate u32 to i32.
+            let raw_pid: i32 = non_zero.get().try_into()?;
 
-        // Safely truncate u32 to i32.
-        let raw_pid: i32 = non_zero.get().try_into()?;
-
-        trace!("Sending SIGINT to child process {raw_pid}.");
-        signal::kill(Pid::from_raw(raw_pid), Signal::SIGINT)?;
+            trace!("Sending SIGINT to child process {raw_pid}.");
+            signal::kill(Pid::from_raw(raw_pid), Signal::SIGINT)?;
+        }
 
         Ok(())
     }

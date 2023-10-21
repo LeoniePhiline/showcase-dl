@@ -246,16 +246,13 @@ impl Video {
             })
             .await;
 
-        match child_exit {
-            Err(report) => {
-                error!("'{}' failed: {:?}", self.url, report);
-                self.set_stage_failed().await;
-            }
-            Ok(_) => {
-                info!("'{}' finished.", self.url);
-                self.set_stage_finished().await;
-            }
-        };
+        if let Err(report) = child_exit {
+            error!("'{}' failed: {:?}", self.url, report);
+            self.set_stage_failed().await;
+        } else {
+            info!("'{}' finished.", self.url);
+            self.set_stage_finished().await;
+        }
 
         // TODO: Could send child shutdown complete signal here:
         //       During shutdown, we could use child shutdown-complete signals,

@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Use `clip_to_play` rather than `streamable_clip` when extracting event video URLs.
 
+### Changed
+
+- Update dependencies.
+
 ## [0.10.0] - 2023-09-19
 
 ### Added

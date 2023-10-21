@@ -401,7 +401,7 @@ impl Ui {
         Ok(())
     }
 
-    fn video_percent_done_default(stage: &VideoStage) -> f64 {
+    fn video_percent_done_default(stage: VideoStage) -> f64 {
         match stage {
             // When a video is already present before starting the app,
             // then this video will be finished without `video.percent_done`

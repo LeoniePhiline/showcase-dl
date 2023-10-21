@@ -372,8 +372,8 @@ impl Video {
 }
 
 impl<'a> VideoRead<'a> {
-    pub(crate) fn stage(&self) -> &Stage {
-        &self.stage
+    pub(crate) fn stage(&self) -> Stage {
+        *self.stage
     }
 
     pub(crate) fn url(&self) -> &'a str {

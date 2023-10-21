@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Support YouTube video and livestream player URLs as arguments.
 - Add support for events without event hash.
 
 ### Fixed

@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
         let url = Url::parse(&args.url)?;
         debug!("Parsed page URL: {url:#?}");
 
-        if url.host_str().unwrap_or_default().ends_with("vimeo.com") {
+        if extract::player::is_player_url(&url) {
             extract::player::download_from_player(url, args.referer.as_deref(), state.clone())
                 .await?;
         } else {

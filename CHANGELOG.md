@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] <!-- release-date -->
 
+### Changed
+
+- Tighten code style to pedantic level.
+
 ## [0.11.1] - 2023-10-21
 
 ### Fixed

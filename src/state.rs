@@ -78,7 +78,7 @@ impl State {
         // This causes the downloader to initiate clean shutdown
         // by muxing partially downloaded video and audio streams.
         let videos = self.videos().await;
-        for video in (*videos).iter() {
+        for video in &(*videos) {
             (*video).initiate_shutdown().await?;
         }
         drop(videos);

@@ -229,7 +229,7 @@ impl Video {
                 if let Some(ref referer) = self.referer {
                     command
                         .arg("--add-header")
-                        .arg(format!("Referer:{}", referer));
+                        .arg(format!("Referer:{referer}"));
                 }
 
                 let child = command

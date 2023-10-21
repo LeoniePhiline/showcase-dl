@@ -69,7 +69,7 @@ impl<'a> Display for ProgressDetail<'a> {
                 frag_total,
             } => {
                 if let Some(percent) = percent {
-                    write!(f, "{:.1} % done. ", percent)?;
+                    write!(f, "{percent:.1} % done. ")?;
                 }
                 if let Some(size) = &size {
                     write!(f, "file size: {}. ", &line[size.clone()])?;
@@ -81,9 +81,9 @@ impl<'a> Display for ProgressDetail<'a> {
                     write!(f, "ETA: {}. ", &line[eta.clone()])?;
                 }
                 if let Some(frag) = frag {
-                    write!(f, "fragments: {}", frag)?;
+                    write!(f, "fragments: {frag}")?;
                     if let Some(frag_total) = frag_total {
-                        write!(f, " / {}", frag_total)?;
+                        write!(f, " / {frag_total}")?;
                     }
                     write!(f, ". ")?;
                 }

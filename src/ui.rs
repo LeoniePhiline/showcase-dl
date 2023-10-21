@@ -210,7 +210,7 @@ impl Ui {
         let app_title = match *state.stage().await {
             Stage::Initializing => Cow::Borrowed(" INITIALIZING ... "),
             Stage::FetchingSource(ref url) => {
-                Cow::Owned(format!(" FETCHING SOURCE PAGE '{}' ... ", url))
+                Cow::Owned(format!(" FETCHING SOURCE PAGE '{url}' ... "))
             }
             Stage::Processing => Cow::Borrowed(" VIMEO SHOWCASE DOWNLOAD "),
             Stage::Done => Cow::Borrowed(" FINISHED! "),
@@ -334,7 +334,7 @@ impl Ui {
 
                     // Column "Progress", using the last known progress,
                     // as a fresh value can not in all cases be parsed from the current line.
-                    row.push(Span::raw(format!("{:.1} %", display_percent)));
+                    row.push(Span::raw(format!("{display_percent:.1} %")));
 
                     // Column "Destination"
                     row.push(Span::raw(match video.output_file().as_ref() {

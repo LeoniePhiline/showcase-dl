@@ -18,11 +18,11 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Gauge, Row, Table},
     Terminal,
 };
-use tokio::{sync::oneshot, sync::RwLock, time::MissedTickBehavior};
+use tokio::{sync::oneshot, time::MissedTickBehavior};
 use tracing::error;
 
 use crate::state::{
-    video::{progress::ProgressDetail, Stage as VideoStage, VideoRead},
+    video::{progress::ProgressDetail, Stage as VideoStage, Video, VideoRead},
     Stage, State,
 };
 
@@ -201,9 +201,6 @@ impl Ui {
         // First, the videos vec is locked to prevent new videos from being added.
         // Then, each video is asked to acquire read on its
 
-        // Acquire read to the videos vec, to block new videos from being added while rendering.
-        let videos = state.videos().await;
-
         let app_title = match *state.stage().await {
             Stage::Initializing => Cow::Borrowed(" INITIALIZING ... "),
             Stage::FetchingSource(ref url) => {
@@ -214,34 +211,11 @@ impl Ui {
             Stage::ShuttingDown => Cow::Borrowed(" SHUTTING DOWN - PLEASE WAIT ... "),
         };
 
-        // Acquire read guards for all videos, to render full state.
-        let all_videos_read: Arc<RwLock<Vec<VideoRead>>> =
-            Arc::new(RwLock::new(Vec::with_capacity((*videos).len())));
-        stream::iter(videos.iter())
-            .for_each_concurrent(None, |video| {
-                // Let each video acquire read as it sees fit. Wait for all to finish.
-                let all_videos_read = all_videos_read.clone();
-                async move {
-                    let video_read = video.read().await;
-                    let mut all_videos_read = all_videos_read.write().await;
-                    (*all_videos_read).push(video_read);
-                }
-            })
-            .await;
-
-        {
-            let mut videos_sort = all_videos_read.write().await;
-            (*videos_sort).sort_by_cached_key(|video_read| {
-                if let Some(title) = video_read.title() {
-                    title.to_string()
-                } else {
-                    video_read.url().to_string()
-                }
-            });
-        }
+        // Acquire read to the videos vec, to block new videos from being added while rendering.
+        let all_videos = state.videos().await;
 
         // Acquire read on collected video read guards to render all in a sync(!) closure.
-        let all_videos_read = (*all_videos_read).read().await;
+        let all_videos_read = Self::acquire_all_videos_sorted(all_videos.iter()).await;
 
         terminal.draw(|f| {
             let area = f.size();
@@ -396,6 +370,30 @@ impl Ui {
         })?;
 
         Ok(())
+    }
+
+    /// Acquire read on collected video read guards to render all in a sync(!) closure.
+    /// The collection is returned sorted by title - where available - else URL.
+    async fn acquire_all_videos_sorted(
+        videos: core::slice::Iter<'_, Arc<Video>>,
+    ) -> Vec<VideoRead> {
+        // Acquire read guards for all videos, to render full state.
+        let mut all_videos_read: Vec<VideoRead> = stream::iter(videos)
+            .map(|video| async { video.read().await })
+            .buffer_unordered(usize::MAX)
+            .collect()
+            .await;
+
+        // Sort the list of videos by their titles (where available, falling back to URLs).
+        (*all_videos_read).sort_by_cached_key(|video_read| {
+            if let Some(title) = video_read.title() {
+                title.to_string()
+            } else {
+                video_read.url().to_string()
+            }
+        });
+
+        all_videos_read
     }
 
     fn video_percent_done_default(stage: VideoStage) -> f64 {

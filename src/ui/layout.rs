@@ -1,14 +1,13 @@
 use std::rc::Rc;
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use tokio::sync::RwLockReadGuard;
 
 use super::style;
 use crate::state::video::VideoRead;
 
 pub(crate) const CHUNKS_PER_VIDEO: usize = 4;
 
-pub(crate) fn layout_chunks(size: Rect, videos: &RwLockReadGuard<Vec<VideoRead>>) -> Rc<[Rect]> {
+pub(crate) fn layout_chunks(size: Rect, videos: &[VideoRead]) -> Rc<[Rect]> {
     Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
@@ -16,14 +15,14 @@ pub(crate) fn layout_chunks(size: Rect, videos: &RwLockReadGuard<Vec<VideoRead>>
         .split(size)
 }
 
-fn layout_constraints(videos: &RwLockReadGuard<Vec<VideoRead>>) -> Vec<Constraint> {
+fn layout_constraints(videos: &[VideoRead]) -> Vec<Constraint> {
     let mut video_constraints = Vec::with_capacity(1 + videos.len() * 4 + 1); // TODO: Instead of re-allocating, place this vec in Ui struct - and only adjust its length as needed?
 
     // Application title block and table header, with bottom margin
     video_constraints.push(Constraint::Length(3));
 
     // Video gauge blocks
-    for _ in videos.iter() {
+    for _ in videos {
         // Video header block
         video_constraints.push(Constraint::Length(1));
         // Video progress text

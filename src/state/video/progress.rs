@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt::Display, ops::Range};
 
-pub enum ProgressDetail<'a> {
+pub(crate) enum ProgressDetail<'a> {
     Raw(&'a str),
     Parsed {
         line: &'a str,
@@ -16,7 +16,7 @@ pub enum ProgressDetail<'a> {
 }
 
 impl<'a> ProgressDetail<'a> {
-    pub fn to_table_cells(&self) -> Option<[Cow<'a, str>; 4]> {
+    pub(crate) fn to_table_cells(&self) -> Option<[Cow<'a, str>; 4]> {
         match self {
             Self::Raw(_) => None,
             Self::Parsed {

@@ -14,7 +14,7 @@ static REGEX_VIDEO_IFRAME: Lazy<Regex> = Lazy::new(|| {
         .unwrap()
 });
 
-pub async fn extract_and_download_embeds(url: Url, state: Arc<State>) -> Result<()> {
+pub(crate) async fn extract_and_download_embeds(url: Url, state: Arc<State>) -> Result<()> {
     let referer = Some(format!(
         "{}://{}/",
         url.scheme(),

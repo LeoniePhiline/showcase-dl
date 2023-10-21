@@ -13,7 +13,7 @@ use crate::{
 static REGEX_TITLE_TAG: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"<title>(?P<title>.*?)</title>"#).unwrap());
 
-pub async fn process_simple_player(
+pub(crate) async fn process_simple_player(
     player_url: &str,
     referer: Option<&str>,
     state: Arc<State>,

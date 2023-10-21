@@ -29,14 +29,14 @@ use crate::state::{
 mod layout;
 mod style;
 
-pub struct Ui;
+pub(crate) struct Ui;
 
 impl Ui {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Ui
     }
 
-    pub async fn event_loop(
+    pub(crate) async fn event_loop(
         &self,
         state: Arc<State>,
         tick: u64,

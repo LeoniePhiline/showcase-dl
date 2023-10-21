@@ -2,43 +2,43 @@ use ratatui::style::{Color, Modifier, Style};
 
 use crate::state::video::Stage;
 
-pub const SPACE_Y: u16 = 1;
+pub(crate) const SPACE_Y: u16 = 1;
 
 #[inline]
-pub fn application_title_style() -> Style {
+pub(crate) fn application_title_style() -> Style {
     Style::default()
         .fg(Color::White)
         .add_modifier(Modifier::BOLD)
 }
 
 #[inline]
-pub fn border_style() -> Style {
+pub(crate) fn border_style() -> Style {
     Style::default().fg(Color::LightBlue)
 }
 
 #[inline]
-pub fn table_header_style() -> Style {
+pub(crate) fn table_header_style() -> Style {
     Style::default()
         .fg(Color::White)
         .add_modifier(Modifier::BOLD)
 }
 
 #[inline]
-pub fn video_title_style() -> Style {
+pub(crate) fn video_title_style() -> Style {
     Style::default()
         .fg(Color::White)
         .add_modifier(Modifier::BOLD)
 }
 
 #[inline]
-pub fn video_stage_style(video_stage: &Stage) -> Style {
+pub(crate) fn video_stage_style(video_stage: &Stage) -> Style {
     Style::default()
         .fg(video_stage_color(video_stage))
         .add_modifier(Modifier::BOLD)
 }
 
 #[inline]
-pub fn gauge_style(video_stage: &Stage) -> Style {
+pub(crate) fn gauge_style(video_stage: &Stage) -> Style {
     Style::default()
         .fg(video_stage_color(video_stage))
         .add_modifier(Modifier::BOLD)

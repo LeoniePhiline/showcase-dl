@@ -1,3 +1,3 @@
-pub mod event;
-pub mod showcase;
-pub mod simple_player;
+pub(crate) mod event;
+pub(crate) mod showcase;
+pub(crate) mod simple_player;

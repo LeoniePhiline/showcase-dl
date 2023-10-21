@@ -24,7 +24,7 @@ static REGEX_EMBED_URL: Lazy<Regex> =
 static REGEX_SHOWCASE_CONFIG: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"dataForPlayer = (?P<showcase_config>\{.*?\});").unwrap());
 
-pub async fn process_showcases(
+pub(crate) async fn process_showcases(
     page_body: &str,
     referer: Option<&str>,
     state: Arc<State>,
@@ -50,7 +50,7 @@ pub async fn process_showcases(
     Ok(())
 }
 
-pub async fn process_showcase(
+pub(crate) async fn process_showcase(
     showcase_url: &str,
     referer: Option<&str>,
     state: Arc<State>,

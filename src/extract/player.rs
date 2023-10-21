@@ -6,7 +6,7 @@ use tracing::info;
 
 use crate::state::State;
 
-pub fn is_player_url(url: &Url) -> bool {
+pub(crate) fn is_player_url(url: &Url) -> bool {
     let host_str = url.host_str().unwrap_or_default();
 
     host_str.ends_with("vimeo.com")
@@ -14,7 +14,7 @@ pub fn is_player_url(url: &Url) -> bool {
         || host_str.ends_with("youtu.be")
 }
 
-pub async fn download_from_player(
+pub(crate) async fn download_from_player(
     url: Url,
     referer: Option<&str>,
     state: Arc<State>,

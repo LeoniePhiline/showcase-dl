@@ -7,17 +7,17 @@ use tracing::{debug, info};
 
 use self::video::Video;
 
-pub mod video;
+pub(crate) mod video;
 
-pub struct State {
-    pub downloader: String,
-    pub downloader_options: Vec<String>,
+pub(crate) struct State {
+    pub(crate) downloader: String,
+    pub(crate) downloader_options: Vec<String>,
 
     stage: RwLock<Stage>,
     videos: RwLock<Vec<Arc<Video>>>,
 }
 
-pub enum Stage {
+pub(crate) enum Stage {
     Initializing,
     FetchingSource(String),
     Processing,
@@ -27,7 +27,7 @@ pub enum Stage {
 }
 
 impl State {
-    pub fn new(downloader: String, downloader_options: Vec<String>) -> Self {
+    pub(crate) fn new(downloader: String, downloader_options: Vec<String>) -> Self {
         Self {
             downloader,
             downloader_options,
@@ -37,32 +37,35 @@ impl State {
         }
     }
 
-    pub async fn set_stage_fetching_source(&self, page_url: impl Into<String>) {
+    pub(crate) async fn set_stage_fetching_source(&self, page_url: impl Into<String>) {
         *self.stage.write().await = Stage::FetchingSource(page_url.into());
     }
 
-    pub async fn set_stage_processing(&self) {
+    pub(crate) async fn set_stage_processing(&self) {
         *self.stage.write().await = Stage::Processing;
     }
 
-    pub async fn set_stage_done(&self) {
+    pub(crate) async fn set_stage_done(&self) {
         *self.stage.write().await = Stage::Done;
     }
 
-    pub async fn stage(&self) -> RwLockReadGuard<Stage> {
+    pub(crate) async fn stage(&self) -> RwLockReadGuard<Stage> {
         self.stage.read().await
     }
 
-    pub async fn push_video(&self, video: Arc<Video>) {
+    pub(crate) async fn push_video(&self, video: Arc<Video>) {
         let mut videos = self.videos.write().await;
         (*videos).push(video);
     }
 
-    pub async fn videos(&self) -> RwLockReadGuard<Vec<Arc<Video>>> {
+    pub(crate) async fn videos(&self) -> RwLockReadGuard<Vec<Arc<Video>>> {
         self.videos.read().await
     }
 
-    pub async fn initiate_shutdown(&self, tx_shutdown_complete: oneshot::Sender<()>) -> Result<()> {
+    pub(crate) async fn initiate_shutdown(
+        &self,
+        tx_shutdown_complete: oneshot::Sender<()>,
+    ) -> Result<()> {
         info!("Initiating shutdown.");
 
         // Set flag to refuse accepting new downloads (spawning new children).
@@ -110,7 +113,7 @@ impl State {
             .await
     }
 
-    pub async fn is_shutting_down(&self) -> bool {
+    pub(crate) async fn is_shutting_down(&self) -> bool {
         matches!(*self.stage.read().await, Stage::ShuttingDown)
     }
 }

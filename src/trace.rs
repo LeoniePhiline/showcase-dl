@@ -6,7 +6,7 @@ use tracing_subscriber::{filter::Directive, layer::SubscriberExt};
 
 use crate::args::Args;
 
-pub fn init(args: &Args) -> Result<WorkerGuard> {
+pub(crate) fn init(args: &Args) -> Result<WorkerGuard> {
     // TODO: Log into a buffer and display that in a bottom split pane.
     let file_appender = tracing_appender::rolling::never(".", "showcase-dl.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
@@ -54,7 +54,7 @@ impl From<&log::Level> for LogLevel {
 }
 
 impl LogLevel {
-    pub fn into_directive(self) -> Directive {
+    pub(crate) fn into_directive(self) -> Directive {
         self.0.into()
     }
 }

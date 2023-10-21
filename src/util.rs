@@ -9,7 +9,7 @@ use tokio::task::JoinHandle;
 use tracing::trace;
 
 // Fetch a URL, applying a referer header
-pub async fn fetch_with_referer(url: &str, referer: Option<&str>) -> Result<String> {
+pub(crate) async fn fetch_with_referer(url: &str, referer: Option<&str>) -> Result<String> {
     let referer_header_value = match referer {
         Some(referer) => HeaderValue::from_str(referer).map(Some),
         None => Ok(None),
@@ -43,7 +43,7 @@ pub async fn fetch_with_referer(url: &str, referer: Option<&str>) -> Result<Stri
 
 // Await the `JoinHandle` if the given `Option` is `Some(_)`
 #[inline]
-pub async fn maybe_join(maybe_spawned: Option<JoinHandle<Result<()>>>) -> Result<()> {
+pub(crate) async fn maybe_join(maybe_spawned: Option<JoinHandle<Result<()>>>) -> Result<()> {
     if let Some(spawned) = maybe_spawned {
         return spawned.await?;
     }

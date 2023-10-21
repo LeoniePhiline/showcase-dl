@@ -21,11 +21,11 @@ use progress::ProgressDetail;
 
 use super::State;
 
-pub mod progress;
+pub(crate) mod progress;
 
 // TODO: Consider wrapping the entire Video in an RwLock or Mutex, rather than the individual fields.
 #[derive(Debug)]
-pub struct Video {
+pub(crate) struct Video {
     stage: RwLock<Stage>,
     url: String,
     referer: Option<String>,
@@ -36,7 +36,7 @@ pub struct Video {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Stage {
+pub(crate) enum Stage {
     Initializing,
     Running { process_id: u32 },
     ShuttingDown { process_id: u32 },
@@ -44,7 +44,7 @@ pub enum Stage {
     Failed,
 }
 
-pub struct VideoRead<'a> {
+pub(crate) struct VideoRead<'a> {
     stage: RwLockReadGuard<'a, Stage>,
     url: &'a str,
     title: RwLockReadGuard<'a, Option<String>>,
@@ -73,11 +73,11 @@ static REGEX_DOWNLOAD_PROGRESS: Lazy<Regex> = Lazy::new(|| {
 });
 
 impl Video {
-    pub fn new(url: impl Into<String>, referer: Option<impl Into<String>>) -> Self {
+    pub(crate) fn new(url: impl Into<String>, referer: Option<impl Into<String>>) -> Self {
         Self::new_with_title(url.into(), referer.map(Into::into), None)
     }
 
-    pub fn new_with_title(
+    pub(crate) fn new_with_title(
         url: impl Into<String>,
         referer: Option<impl Into<String>>,
         title: Option<String>,
@@ -93,31 +93,31 @@ impl Video {
         }
     }
 
-    pub async fn set_stage_running(&self, process_id: u32) {
+    pub(crate) async fn set_stage_running(&self, process_id: u32) {
         *self.stage.write().await = Stage::Running { process_id };
     }
 
-    pub async fn set_stage_shutting_down(&self, process_id: u32) {
+    pub(crate) async fn set_stage_shutting_down(&self, process_id: u32) {
         *self.stage.write().await = Stage::ShuttingDown { process_id };
     }
 
-    pub async fn set_stage_finished(&self) {
+    pub(crate) async fn set_stage_finished(&self) {
         *self.stage.write().await = Stage::Finished;
     }
 
-    pub async fn set_stage_failed(&self) {
+    pub(crate) async fn set_stage_failed(&self) {
         *self.stage.write().await = Stage::Failed;
     }
 
-    pub async fn stage(&self) -> RwLockReadGuard<Stage> {
+    pub(crate) async fn stage(&self) -> RwLockReadGuard<Stage> {
         self.stage.read().await
     }
 
-    pub fn url(&self) -> &str {
+    pub(crate) fn url(&self) -> &str {
         &self.url
     }
 
-    pub async fn use_title<F, O>(&self, f: F) -> O
+    pub(crate) async fn use_title<F, O>(&self, f: F) -> O
     where
         F: FnOnce(&Option<String>) -> O,
     {
@@ -125,16 +125,16 @@ impl Video {
         f(&title)
     }
 
-    pub async fn update_title(&self, new_title: String) {
+    pub(crate) async fn update_title(&self, new_title: String) {
         let mut title = self.title.write().await;
         *title = Some(new_title);
     }
 
-    pub async fn title(&self) -> RwLockReadGuard<Option<String>> {
+    pub(crate) async fn title(&self) -> RwLockReadGuard<Option<String>> {
         self.title.read().await
     }
 
-    pub async fn update_line(&self, new_line: String) {
+    pub(crate) async fn update_line(&self, new_line: String) {
         self.extract_output_file(&new_line).await;
         self.extract_percent_done(&new_line).await;
 
@@ -172,29 +172,29 @@ impl Video {
         }
     }
 
-    pub async fn line(&self) -> RwLockReadGuard<Option<String>> {
+    pub(crate) async fn line(&self) -> RwLockReadGuard<Option<String>> {
         self.line.read().await
     }
 
-    pub async fn update_percent_done(&self, new_percent: f64) {
+    pub(crate) async fn update_percent_done(&self, new_percent: f64) {
         let mut percent_done = self.percent_done.write().await;
         *percent_done = Some(new_percent);
     }
 
-    pub async fn percent_done(&self) -> RwLockReadGuard<Option<f64>> {
+    pub(crate) async fn percent_done(&self) -> RwLockReadGuard<Option<f64>> {
         self.percent_done.read().await
     }
 
-    pub async fn update_output_file(&self, new_output_file: String) {
+    pub(crate) async fn update_output_file(&self, new_output_file: String) {
         let mut output_file = self.output_file.write().await;
         *output_file = Some(new_output_file);
     }
 
-    pub async fn output_file(&self) -> RwLockReadGuard<Option<String>> {
+    pub(crate) async fn output_file(&self) -> RwLockReadGuard<Option<String>> {
         self.output_file.read().await
     }
 
-    pub async fn download(self: Arc<Self>, state: Arc<State>) -> Result<()> {
+    pub(crate) async fn download(self: Arc<Self>, state: Arc<State>) -> Result<()> {
         if state.is_shutting_down().await {
             warn!("Refusing to start a new download during shutdown.");
             // Not an error.
@@ -338,7 +338,7 @@ impl Video {
     }
 
     // Acquire read guards for all fine-grained access-controlled fields.
-    pub async fn read(&self) -> VideoRead {
+    pub(crate) async fn read(&self) -> VideoRead {
         VideoRead {
             stage: self.stage().await,
             url: &self.url,
@@ -349,7 +349,7 @@ impl Video {
         }
     }
 
-    pub async fn initiate_shutdown(&self) -> Result<()> {
+    pub(crate) async fn initiate_shutdown(&self) -> Result<()> {
         let stage = *self.stage().await;
         if let Stage::Running { process_id } = stage {
             debug!("Shutting down child process {process_id}.");
@@ -372,19 +372,19 @@ impl Video {
 }
 
 impl<'a> VideoRead<'a> {
-    pub fn stage(&self) -> &Stage {
+    pub(crate) fn stage(&self) -> &Stage {
         &self.stage
     }
 
-    pub fn url(&self) -> &'a str {
+    pub(crate) fn url(&self) -> &'a str {
         self.url
     }
 
-    pub fn title(&self) -> &Option<String> {
+    pub(crate) fn title(&self) -> &Option<String> {
         &self.title
     }
 
-    pub fn progress_detail(&'a self) -> Option<ProgressDetail<'a>> {
+    pub(crate) fn progress_detail(&'a self) -> Option<ProgressDetail<'a>> {
         match *self.line {
             Some(ref line) => {
                 let maybe_captures = REGEX_DOWNLOAD_PROGRESS.captures(line.as_str());
@@ -426,11 +426,11 @@ impl<'a> VideoRead<'a> {
         }
     }
 
-    pub fn output_file(&self) -> &Option<String> {
+    pub(crate) fn output_file(&self) -> &Option<String> {
         &self.output_file
     }
 
-    pub fn percent_done(&self) -> &Option<f64> {
+    pub(crate) fn percent_done(&self) -> &Option<f64> {
         &self.percent_done
     }
 }

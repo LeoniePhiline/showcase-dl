@@ -14,7 +14,7 @@ static REGEX_EVENT_URL_PARAMS: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"https://vimeo.com/event/(?P<event_id>\d+)(?:/(?P<event_hash>[\da-f]+))?").unwrap()
 });
 
-pub async fn process_event(event_url: &str, state: Arc<State>) -> Result<()> {
+pub(crate) async fn process_event(event_url: &str, state: Arc<State>) -> Result<()> {
     // Assert valid event URL and extract ID and hash.
     let (event_id, maybe_event_hash) = extract_event_url_params(event_url)?;
 

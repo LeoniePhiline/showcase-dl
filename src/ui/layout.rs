@@ -6,9 +6,9 @@ use tokio::sync::RwLockReadGuard;
 use super::style;
 use crate::state::video::VideoRead;
 
-pub const CHUNKS_PER_VIDEO: usize = 4;
+pub(crate) const CHUNKS_PER_VIDEO: usize = 4;
 
-pub fn layout_chunks(size: Rect, videos: &RwLockReadGuard<Vec<VideoRead>>) -> Rc<[Rect]> {
+pub(crate) fn layout_chunks(size: Rect, videos: &RwLockReadGuard<Vec<VideoRead>>) -> Rc<[Rect]> {
     Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
@@ -39,7 +39,7 @@ fn layout_constraints(videos: &RwLockReadGuard<Vec<VideoRead>>) -> Vec<Constrain
     video_constraints
 }
 
-pub fn video_raw_progress_table_layout() -> [Constraint; 4] {
+pub(crate) fn video_raw_progress_table_layout() -> [Constraint; 4] {
     [
         Constraint::Percentage(10),
         Constraint::Percentage(10),
@@ -48,7 +48,7 @@ pub fn video_raw_progress_table_layout() -> [Constraint; 4] {
     ]
 }
 
-pub fn video_progress_detail_table_layout() -> [Constraint; 7] {
+pub(crate) fn video_progress_detail_table_layout() -> [Constraint; 7] {
     [
         Constraint::Percentage(10),
         Constraint::Percentage(10),

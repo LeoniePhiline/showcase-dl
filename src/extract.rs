@@ -1,2 +1,2 @@
-pub mod embeds;
-pub mod player;
+pub(crate) mod embeds;
+pub(crate) mod player;

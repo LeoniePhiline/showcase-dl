@@ -2,7 +2,7 @@ use color_eyre::eyre::Result;
 
 use crate::ui::Ui;
 
-pub fn color_eyre_install() -> Result<()> {
+pub(crate) fn color_eyre_install() -> Result<()> {
     // Replace the default `color_eyre::install()?` panic and error hooks.
     // The new hooks release the captured terminal first. This prevents garbled backtrace prints.
     let (panic_hook, eyre_hook) = color_eyre::config::HookBuilder::default().into_hooks();

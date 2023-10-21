@@ -1,4 +1,9 @@
-use std::{borrow::Cow, io, sync::Arc};
+use std::{
+    borrow::Cow,
+    io::{self, Stdout},
+    rc::Rc,
+    sync::Arc,
+};
 
 use color_eyre::eyre::{bail, Report, Result};
 use crossterm::{
@@ -14,9 +19,10 @@ use futures::{
 use ratatui::{
     backend::CrosstermBackend,
     layout::Alignment,
+    prelude::Rect,
     text::Span,
     widgets::{Block, BorderType, Borders, Gauge, Row, Table},
-    Terminal,
+    Frame, Terminal,
 };
 use tokio::{sync::oneshot, time::MissedTickBehavior};
 use tracing::error;
@@ -217,152 +223,43 @@ impl Ui {
         // Acquire read on collected video read guards to render all in a sync(!) closure.
         let all_videos_read = Self::acquire_all_videos_sorted(all_videos.iter()).await;
 
-        terminal.draw(|f| {
-            let area = f.size();
+        terminal.draw(|frame| {
+            let area = frame.size();
 
             let chunks = layout::layout_chunks(area, &all_videos_read);
 
-            f.render_widget(
-                Table::new([])
-                    .header(
-                        Row::new([
-                            "Stage",
-                            "Progress",
-                            "Destination",
-                            "Size",
-                            "Speed",
-                            "ETA",
-                            "Fragments",
-                        ])
-                        .style(style::table_header_style())
-                        .bottom_margin(1),
-                    )
-                    .widths(&layout::video_progress_detail_table_layout())
-                    .column_spacing(2)
-                    .block(
-                        Block::default()
-                            .title(Span::styled(app_title, style::application_title_style()))
-                            .title_alignment(Alignment::Center)
-                            .borders(Borders::TOP)
-                            .border_style(style::border_style())
-                            .border_type(BorderType::Thick),
-                    ),
-                chunks[0],
-            );
+            Self::render_app_frame(frame, &chunks, app_title);
 
-            for (i, video) in (*all_videos_read).iter().enumerate() {
+            for (i, video) in all_videos_read.iter().enumerate() {
                 // TODO: Create a video widget?
                 // TODO: Make video widget selectable, expose pause, continue, stop (SIGINT), retry
                 // TODO: Create a scrollable(!) "list of videos" widget
 
                 let chunk_start = 1 + i * layout::CHUNKS_PER_VIDEO;
 
-                // Video title block
-                f.render_widget(
-                    Block::default()
-                        .title(Span::styled(
-                            format!(
-                                "{} ",
-                                match video.title() {
-                                    Some(title) => title.as_str(),
-                                    None => video.url(),
-                                }
-                            ),
-                            style::video_title_style(),
-                        ))
-                        .borders(Borders::TOP)
-                        .border_style(style::border_style())
-                        .border_type(BorderType::Plain),
-                    chunks[chunk_start],
-                );
+                Self::render_video_title(frame, &chunks, chunk_start, video);
 
-                // Video raw progress text or parsed progress
-                let progress_detail_chunk = chunks[chunk_start + 1];
                 let display_percent = video
                     .percent_done()
                     .unwrap_or_else(|| Self::video_percent_done_default(video.stage()));
-                let maybe_progress_detail = video.progress_detail();
-                if let Some(progress) = &maybe_progress_detail {
-                    // Build two variants of details table, depending on if we have a
-                    // `ProgressDetail::Raw(line)`, rendered as basics + unparsed `yt-dlp` output line,
-                    //  or a `ProgressDetail::Parsed { .. }`, rendered as full table of download stats.
-                    let mut row = Vec::with_capacity(match progress {
-                        ProgressDetail::Raw(_) => 4,
-                        ProgressDetail::Parsed { .. } => 7,
-                    });
 
-                    // Column "Stage"
-                    row.push(Span::styled(
-                        match video.stage() {
-                            VideoStage::Initializing => "Intializing...",
-                            VideoStage::Running { .. } => "Running...",
-                            VideoStage::ShuttingDown { .. } => "Shutting down...",
-                            VideoStage::Finished => "Finished!",
-                            VideoStage::Failed => "Failed!",
-                        },
-                        style::video_stage_style(video.stage()),
-                    ));
-
-                    // Column "Progress", using the last known progress,
-                    // as a fresh value can not in all cases be parsed from the current line.
-                    row.push(Span::raw(format!("{display_percent:.1} %")));
-
-                    // Column "Destination"
-                    row.push(Span::raw(match video.output_file().as_ref() {
-                        Some(output_file) => output_file.as_str(),
-                        None => "",
-                    }));
-
-                    match progress {
-                        ProgressDetail::Raw(line) => {
-                            // Single column, spanning across "Size", "Speed", "ETA" and "Fragments"
-                            row.push(Span::raw(match video.stage() {
-                                // Avoid showing the last output line when video progress is entirely finished.
-                                // Often this just says "Deleting output file [...]" after merging video
-                                // and audio formats. Which is just confusing to end users.
-                                VideoStage::Finished => "",
-                                // Display the last raw output line as long as video progress is not yet finished.
-                                _ => *line,
-                            }));
-
-                            f.render_widget(
-                                Table::new([Row::new(row)])
-                                    .widths(&layout::video_raw_progress_table_layout())
-                                    .column_spacing(2),
-                                progress_detail_chunk,
-                            );
-                        }
-                        ProgressDetail::Parsed { .. } => {
-                            // Columns "Size", "Speed", "ETA" and "Fragments"
-                            row.append(
-                                &mut progress
-                                    .to_table_cells()
-                                    // Unwrapping is panic-safe here, as `.to_table_cells()`
-                                    // always returns `Some([Cow<'a, str>; 4])`
-                                    // for the `ProgressDetail::Parsed` enum variant.
-                                    .unwrap()
-                                    .into_iter()
-                                    .map(Span::raw)
-                                    .collect::<Vec<Span>>(),
-                            );
-
-                            f.render_widget(
-                                Table::new([Row::new(row)])
-                                    .widths(&layout::video_progress_detail_table_layout())
-                                    .column_spacing(2),
-                                progress_detail_chunk,
-                            );
-                        }
-                    };
-                };
+                // Video raw progress text or parsed progress
+                Self::render_video_progress_detail(
+                    frame,
+                    &chunks,
+                    chunk_start,
+                    video,
+                    display_percent,
+                );
 
                 // Video progress bar
-                let gauge = Gauge::default()
-                    .gauge_style(style::gauge_style(video.stage()))
-                    .use_unicode(true)
-                    .ratio(display_percent / 100.0);
-
-                f.render_widget(gauge, chunks[chunk_start + 2]);
+                Self::render_video_progress_bar(
+                    frame,
+                    &chunks,
+                    chunk_start,
+                    video,
+                    display_percent,
+                );
 
                 // Video bottom margin
                 // (not rendered)
@@ -394,6 +291,165 @@ impl Ui {
         });
 
         all_videos_read
+    }
+
+    fn render_app_frame(
+        frame: &mut Frame<'_, CrosstermBackend<Stdout>>,
+        chunks: &Rc<[Rect]>,
+        app_title: Cow<'_, str>,
+    ) {
+        frame.render_widget(
+            Table::new([])
+                .header(
+                    Row::new([
+                        "Stage",
+                        "Progress",
+                        "Destination",
+                        "Size",
+                        "Speed",
+                        "ETA",
+                        "Fragments",
+                    ])
+                    .style(style::table_header_style())
+                    .bottom_margin(1),
+                )
+                .widths(&layout::video_progress_detail_table_layout())
+                .column_spacing(2)
+                .block(
+                    Block::default()
+                        .title(Span::styled(app_title, style::application_title_style()))
+                        .title_alignment(Alignment::Center)
+                        .borders(Borders::TOP)
+                        .border_style(style::border_style())
+                        .border_type(BorderType::Thick),
+                ),
+            chunks[0],
+        );
+    }
+
+    fn render_video_title(
+        frame: &mut Frame<'_, CrosstermBackend<Stdout>>,
+        chunks: &Rc<[Rect]>,
+        chunk_start: usize,
+        video: &VideoRead<'_>,
+    ) {
+        // Video title block
+        frame.render_widget(
+            Block::default()
+                .title(Span::styled(
+                    format!(
+                        "{} ",
+                        match video.title() {
+                            Some(title) => title.as_str(),
+                            None => video.url(),
+                        }
+                    ),
+                    style::video_title_style(),
+                ))
+                .borders(Borders::TOP)
+                .border_style(style::border_style())
+                .border_type(BorderType::Plain),
+            chunks[chunk_start],
+        );
+    }
+
+    fn render_video_progress_detail(
+        frame: &mut Frame<'_, CrosstermBackend<Stdout>>,
+        chunks: &Rc<[Rect]>,
+        chunk_start: usize,
+        video: &VideoRead<'_>,
+        display_percent: f64,
+    ) {
+        let progress_detail_chunk = chunks[chunk_start + 1];
+        let maybe_progress_detail = video.progress_detail();
+        if let Some(progress) = &maybe_progress_detail {
+            // Build two variants of details table, depending on if we have a
+            // `ProgressDetail::Raw(line)`, rendered as basics + unparsed `yt-dlp` output line,
+            //  or a `ProgressDetail::Parsed { .. }`, rendered as full table of download stats.
+            let mut row = Vec::with_capacity(match progress {
+                ProgressDetail::Raw(_) => 4,
+                ProgressDetail::Parsed { .. } => 7,
+            });
+
+            // Column "Stage"
+            row.push(Span::styled(
+                match video.stage() {
+                    VideoStage::Initializing => "Intializing...",
+                    VideoStage::Running { .. } => "Running...",
+                    VideoStage::ShuttingDown { .. } => "Shutting down...",
+                    VideoStage::Finished => "Finished!",
+                    VideoStage::Failed => "Failed!",
+                },
+                style::video_stage_style(video.stage()),
+            ));
+
+            // Column "Progress", using the last known progress,
+            // as a fresh value can not in all cases be parsed from the current line.
+            row.push(Span::raw(format!("{display_percent:.1} %")));
+
+            // Column "Destination"
+            row.push(Span::raw(match video.output_file().as_ref() {
+                Some(output_file) => output_file.as_str(),
+                None => "",
+            }));
+
+            match progress {
+                ProgressDetail::Raw(line) => {
+                    // Single column, spanning across "Size", "Speed", "ETA" and "Fragments"
+                    row.push(Span::raw(match video.stage() {
+                        // Avoid showing the last output line when video progress is entirely finished.
+                        // Often this just says "Deleting output file [...]" after merging video
+                        // and audio formats. Which is just confusing to end users.
+                        VideoStage::Finished => "",
+                        // Display the last raw output line as long as video progress is not yet finished.
+                        _ => *line,
+                    }));
+
+                    frame.render_widget(
+                        Table::new([Row::new(row)])
+                            .widths(&layout::video_raw_progress_table_layout())
+                            .column_spacing(2),
+                        progress_detail_chunk,
+                    );
+                }
+                ProgressDetail::Parsed { .. } => {
+                    // Columns "Size", "Speed", "ETA" and "Fragments"
+                    row.append(
+                        &mut progress
+                            .to_table_cells()
+                            // Unwrapping is panic-safe here, as `.to_table_cells()`
+                            // always returns `Some([Cow<'a, str>; 4])`
+                            // for the `ProgressDetail::Parsed` enum variant.
+                            .unwrap()
+                            .into_iter()
+                            .map(Span::raw)
+                            .collect::<Vec<Span>>(),
+                    );
+
+                    frame.render_widget(
+                        Table::new([Row::new(row)])
+                            .widths(&layout::video_progress_detail_table_layout())
+                            .column_spacing(2),
+                        progress_detail_chunk,
+                    );
+                }
+            };
+        };
+    }
+
+    fn render_video_progress_bar(
+        frame: &mut Frame<'_, CrosstermBackend<Stdout>>,
+        chunks: &Rc<[Rect]>,
+        chunk_start: usize,
+        video: &VideoRead<'_>,
+        display_percent: f64,
+    ) {
+        let gauge = Gauge::default()
+            .gauge_style(style::gauge_style(video.stage()))
+            .use_unicode(true)
+            .ratio(display_percent / 100.0);
+
+        frame.render_widget(gauge, chunks[chunk_start + 2]);
     }
 
     fn video_percent_done_default(stage: VideoStage) -> f64 {

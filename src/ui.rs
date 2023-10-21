@@ -194,7 +194,7 @@ impl Ui {
         }
     }
 
-    async fn render<'a, 's>(
+    async fn render<'a>(
         &self,
         state: &State,
         terminal: &'a mut Terminal<CrosstermBackend<std::io::Stdout>>,

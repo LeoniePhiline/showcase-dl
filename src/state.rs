@@ -37,7 +37,7 @@ impl State {
         }
     }
 
-    pub async fn set_stage_fetching_source<'a>(&self, page_url: impl Into<String>) {
+    pub async fn set_stage_fetching_source(&self, page_url: impl Into<String>) {
         *self.stage.write().await = Stage::FetchingSource(page_url.into());
     }
 

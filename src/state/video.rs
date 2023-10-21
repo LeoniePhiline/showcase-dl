@@ -39,7 +39,7 @@ pub(crate) struct Video {
 pub(crate) enum Stage {
     Initializing,
     Running { process_id: u32 },
-    ShuttingDown { process_id: u32 },
+    ShuttingDown,
     Finished,
     Failed,
 }
@@ -97,8 +97,8 @@ impl Video {
         *self.stage.write().await = Stage::Running { process_id };
     }
 
-    pub(crate) async fn set_stage_shutting_down(&self, process_id: u32) {
-        *self.stage.write().await = Stage::ShuttingDown { process_id };
+    pub(crate) async fn set_stage_shutting_down(&self) {
+        *self.stage.write().await = Stage::ShuttingDown;
     }
 
     pub(crate) async fn set_stage_finished(&self) {
@@ -354,7 +354,7 @@ impl Video {
         if let Stage::Running { process_id } = stage {
             debug!("Shutting down child process {process_id}.");
 
-            self.set_stage_shutting_down(process_id).await;
+            self.set_stage_shutting_down().await;
 
             // Assert non-zero process ID, as for `kill 0`, the signal will be sent
             // to all processes whose group ID is equal to the process group ID of the sender.

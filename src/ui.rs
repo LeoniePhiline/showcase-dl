@@ -215,22 +215,22 @@ impl Ui {
         };
 
         // Acquire read guards for all videos, to render full state.
-        let videos_read: Arc<RwLock<Vec<VideoRead>>> =
+        let all_videos_read: Arc<RwLock<Vec<VideoRead>>> =
             Arc::new(RwLock::new(Vec::with_capacity((*videos).len())));
         stream::iter(videos.iter())
             .for_each_concurrent(None, |video| {
                 // Let each video acquire read as it sees fit. Wait for all to finish.
-                let videos_read = videos_read.clone();
+                let all_videos_read = all_videos_read.clone();
                 async move {
                     let video_read = video.read().await;
-                    let mut videos_read = videos_read.write().await;
-                    (*videos_read).push(video_read);
+                    let mut all_videos_read = all_videos_read.write().await;
+                    (*all_videos_read).push(video_read);
                 }
             })
             .await;
 
         {
-            let mut videos_sort = videos_read.write().await;
+            let mut videos_sort = all_videos_read.write().await;
             (*videos_sort).sort_by_cached_key(|video_read| {
                 if let Some(title) = video_read.title() {
                     title.to_string()
@@ -241,12 +241,12 @@ impl Ui {
         }
 
         // Acquire read on collected video read guards to render all in a sync(!) closure.
-        let videos_read = (*videos_read).read().await;
+        let all_videos_read = (*all_videos_read).read().await;
 
         terminal.draw(|f| {
             let area = f.size();
 
-            let chunks = layout::layout_chunks(area, &videos_read);
+            let chunks = layout::layout_chunks(area, &all_videos_read);
 
             f.render_widget(
                 Table::new([])
@@ -276,7 +276,7 @@ impl Ui {
                 chunks[0],
             );
 
-            for (i, video) in (*videos_read).iter().enumerate() {
+            for (i, video) in (*all_videos_read).iter().enumerate() {
                 // TODO: Create a video widget?
                 // TODO: Make video widget selectable, expose pause, continue, stop (SIGINT), retry
                 // TODO: Create a scrollable(!) "list of videos" widget

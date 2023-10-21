@@ -1,4 +1,4 @@
-#![doc = include_str!( "../README.md")]
+#![doc = include_str!("../README.md")]
 // Opt-in to allowed-by-default rustc lints
 // Reference: https://doc.rust-lang.org/rustc/lints/groups.html
 #![warn(

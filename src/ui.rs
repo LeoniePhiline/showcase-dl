@@ -42,7 +42,7 @@ impl Ui {
         tick: u64,
         do_work: impl Future<Output = Result<()>>,
     ) -> Result<()> {
-        let mut terminal = self.take_terminal()?;
+        let mut terminal = Self::take_terminal()?;
 
         // This anonymous future helps capture any `Result::Err(Report)` which is propagated while the terminal is captured.
         // If such an eyre Report is propagated to the end of `fn main()` while the terminal is still captured,
@@ -90,7 +90,7 @@ impl Ui {
                             maybe_event = event_stream.next() => match maybe_event {
 
                                 // Shutdown on request by breaking out of the event loop
-                                Some(Ok(ref event)) => if ! self.handle_event(event) {
+                                Some(Ok(ref event)) => if ! Self::handle_event(event) {
 
                                     // Intiate shutdown only once, silently ignore user shutdown requests
                                     // while awaiting child processes muxing livestream data.
@@ -152,7 +152,7 @@ impl Ui {
         Ok(Terminal::new(backend)?)
     }
 
-    fn take_terminal(&self) -> Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
+    fn take_terminal() -> Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
         enable_raw_mode()?;
         execute!(io::stdout(), EnterAlternateScreen)?;
         Self::make_terminal()
@@ -166,7 +166,7 @@ impl Ui {
         disable_raw_mode()
     }
 
-    fn handle_event(&self, event: &Event) -> bool {
+    fn handle_event(event: &Event) -> bool {
         match event {
             // Handle keyboard event: Exit on Esc, Q or Ctrl+C
             Event::Key(KeyEvent {

@@ -169,25 +169,22 @@ impl Ui {
     fn handle_event(event: &Event) -> bool {
         match event {
             // Handle keyboard event: Exit on Esc, Q or Ctrl+C
-            Event::Key(KeyEvent {
-                code: KeyCode::Esc,
-                modifiers: _,
-                ..
-            })
-            | Event::Key(KeyEvent {
-                code: KeyCode::Char('q'),
-                modifiers: _,
-                ..
-            })
-            | Event::Key(KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::CONTROL,
-                ..
-            }) => false,
+            Event::Key(
+                KeyEvent {
+                    code: KeyCode::Esc | KeyCode::Char('q'),
+                    modifiers: _,
+                    ..
+                }
+                | KeyEvent {
+                    code: KeyCode::Char('c'),
+                    modifiers: KeyModifiers::CONTROL,
+                    ..
+                },
+            ) => false,
 
             // Handle other keyboard events later, e.g. to
             // select list items or scroll in long tables
-            Event::Key(_) => true,
+            // Event::Key(_) => true,
 
             // Mouse & Resize events
             _ => true,

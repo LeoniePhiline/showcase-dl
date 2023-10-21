@@ -90,7 +90,7 @@ impl Ui {
                             maybe_event = event_stream.next() => match maybe_event {
 
                                 // Shutdown on request by breaking out of the event loop
-                                Some(Ok(event)) => if ! self.handle_event(event) {
+                                Some(Ok(ref event)) => if ! self.handle_event(event) {
 
                                     // Intiate shutdown only once, silently ignore user shutdown requests
                                     // while awaiting child processes muxing livestream data.
@@ -166,7 +166,7 @@ impl Ui {
         disable_raw_mode()
     }
 
-    fn handle_event(&self, event: Event) -> bool {
+    fn handle_event(&self, event: &Event) -> bool {
         match event {
             // Handle keyboard event: Exit on Esc, Q or Ctrl+C
             Event::Key(KeyEvent {

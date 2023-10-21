@@ -27,7 +27,7 @@ pub async fn extract_and_download_embeds(url: Url, state: Arc<State>) -> Result<
     let response_text = Client::new().get(url).send().await?.text().await?;
     trace!(page_response_text = %response_text);
 
-    info!("Extract vimeo embeds...");
+    info!("Extract embeds...");
     state.set_stage_processing().await;
 
     tokio::try_join!(

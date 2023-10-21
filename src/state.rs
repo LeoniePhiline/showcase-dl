@@ -91,7 +91,7 @@ impl State {
         // Send shutdown-complete signal back to the UI's render loop.
         tx_shutdown_complete
             .send(())
-            .map_err(|_| eyre!("failed sending shutdown-complete signal"))?;
+            .map_err(|()| eyre!("failed sending shutdown-complete signal"))?;
 
         Ok(())
     }

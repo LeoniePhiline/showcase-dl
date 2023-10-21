@@ -249,11 +249,11 @@ impl Video {
         match child_exit {
             Err(report) => {
                 error!("'{}' failed: {:?}", self.url, report);
-                self.set_stage_failed().await
+                self.set_stage_failed().await;
             }
             Ok(_) => {
                 info!("'{}' finished.", self.url);
-                self.set_stage_finished().await
+                self.set_stage_finished().await;
             }
         };
 
@@ -323,9 +323,9 @@ impl Video {
                             None => video.url(),
                         };
                         if next_line.starts_with("ERROR:") {
-                            error!("Line from '{title}': '{next_line}'",)
+                            error!("Line from '{title}': '{next_line}'");
                         } else {
-                            trace!("Line from '{title}': '{next_line}'",)
+                            trace!("Line from '{title}': '{next_line}'");
                         }
                     })
                     .await;

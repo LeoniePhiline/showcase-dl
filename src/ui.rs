@@ -359,7 +359,7 @@ impl Ui {
                                     .widths(&layout::video_raw_progress_table_layout())
                                     .column_spacing(2),
                                 progress_detail_chunk,
-                            )
+                            );
                         }
                         ProgressDetail::Parsed { .. } => {
                             // Columns "Size", "Speed", "ETA" and "Fragments"
@@ -380,7 +380,7 @@ impl Ui {
                                     .widths(&layout::video_progress_detail_table_layout())
                                     .column_spacing(2),
                                 progress_detail_chunk,
-                            )
+                            );
                         }
                     };
                 };

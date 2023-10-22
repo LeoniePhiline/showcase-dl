@@ -31,20 +31,20 @@ pub(crate) fn video_title_style() -> Style {
 }
 
 #[inline]
-pub(crate) fn video_stage_style(video_stage: Stage) -> Style {
+pub(crate) fn video_stage_style(video_stage: &Stage) -> Style {
     Style::default()
         .fg(video_stage_color(video_stage))
         .add_modifier(Modifier::BOLD)
 }
 
 #[inline]
-pub(crate) fn gauge_style(video_stage: Stage) -> Style {
+pub(crate) fn gauge_style(video_stage: &Stage) -> Style {
     Style::default()
         .fg(video_stage_color(video_stage))
         .add_modifier(Modifier::BOLD)
 }
 
-fn video_stage_color(video_stage: Stage) -> Color {
+fn video_stage_color(video_stage: &Stage) -> Color {
     match video_stage {
         Stage::Initializing => Color::LightCyan,
         Stage::Running { .. } => Color::LightYellow,

@@ -1,7 +1,7 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use color_eyre::eyre::{eyre, Result};
-use futures::{stream, StreamExt};
+use futures::future::join_all;
 use tokio::sync::{oneshot, RwLock, RwLockReadGuard};
 use tracing::{debug, info};
 
@@ -64,53 +64,48 @@ impl State {
 
     pub(crate) async fn initiate_shutdown(
         &self,
-        tx_shutdown_complete: oneshot::Sender<()>,
+        global_shutdown_complete: oneshot::Sender<()>,
     ) -> Result<()> {
         info!("Initiating shutdown.");
 
         // Set flag to refuse accepting new downloads (spawning new children).
         *self.stage.write().await = Stage::ShuttingDown;
 
-        debug!("Sending SIGINT to child processes.");
+        let mut children_shutdown = Vec::new();
 
         // Send SIGINT to all existing children.
         //
         // This causes the downloader to initiate clean shutdown
         // by muxing partially downloaded video and audio streams.
         let videos = self.videos().await;
+
+        debug!("Sending SIGINT to child processes.");
         for video in &(*videos) {
+            // Take each running download's single-use shutdown signal.
+            //
+            // We will await all currently running downloads
+            // signaling their child process' graceful shutdown.
+            if let Some(shutdown_signal) = (*video).take_shutdown_signal().await {
+                children_shutdown.push(shutdown_signal);
+            }
+
             (*video).initiate_shutdown().await?;
         }
         drop(videos);
 
-        // Then check every 50ms if all children have terminated.
-        while !self.all_children_terminated().await {
-            tokio::time::sleep(Duration::from_millis(50)).await;
-        }
+        // Wait until all children have terminated.
+        debug!(
+            "Awaiting {} child processes shutting down.",
+            children_shutdown.len()
+        );
+        join_all(children_shutdown).await;
 
         // Send shutdown-complete signal back to the UI's render loop.
-        tx_shutdown_complete
+        global_shutdown_complete
             .send(())
             .map_err(|()| eyre!("failed sending shutdown-complete signal"))?;
 
         Ok(())
-    }
-
-    async fn all_children_terminated(&self) -> bool {
-        let videos = self.videos().await;
-
-        // Determine if all children have either finished or failed.
-        stream::iter((*videos).iter())
-            .all(|video| async {
-                // Is any download *not* yet finished or failed?
-                // Then we will send an interrupt signal
-                // and wait for a few seconds before retrying.
-                matches!(
-                    *video.stage().await,
-                    self::video::Stage::Finished | self::video::Stage::Failed
-                )
-            })
-            .await
     }
 
     pub(crate) async fn is_shutting_down(&self) -> bool {

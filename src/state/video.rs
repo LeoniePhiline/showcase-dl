@@ -11,7 +11,7 @@ use regex::Regex;
 use tokio::{
     io::{AsyncBufReadExt, AsyncRead, BufReader},
     process::{Child, Command},
-    sync::{RwLock, RwLockReadGuard},
+    sync::{oneshot, RwLock, RwLockReadGuard},
     task::JoinHandle,
 };
 use tracing::{debug, error, info, trace, warn};
@@ -35,10 +35,13 @@ pub(crate) struct Video {
     percent_done: RwLock<Option<f64>>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 pub(crate) enum Stage {
     Initializing,
-    Running { process_id: u32 },
+    Running {
+        process_id: u32,
+        shutdown_signal: Option<oneshot::Receiver<()>>,
+    },
     ShuttingDown,
     Finished,
     Failed,
@@ -93,8 +96,15 @@ impl Video {
         }
     }
 
-    pub(crate) async fn set_stage_running(&self, process_id: u32) {
-        *self.stage.write().await = Stage::Running { process_id };
+    pub(crate) async fn set_stage_running(
+        &self,
+        process_id: u32,
+        shutdown_signal: oneshot::Receiver<()>,
+    ) {
+        *self.stage.write().await = Stage::Running {
+            process_id,
+            shutdown_signal: Some(shutdown_signal),
+        };
     }
 
     pub(crate) async fn set_stage_shutting_down(&self) {
@@ -111,6 +121,15 @@ impl Video {
 
     pub(crate) async fn stage(&self) -> RwLockReadGuard<Stage> {
         self.stage.read().await
+    }
+
+    pub(crate) async fn take_shutdown_signal(&self) -> Option<oneshot::Receiver<()>> {
+        match &mut *self.stage.write().await {
+            Stage::Running {
+                shutdown_signal, ..
+            } => shutdown_signal.take(),
+            _ => None,
+        }
     }
 
     pub(crate) fn url(&self) -> &str {
@@ -201,6 +220,8 @@ impl Video {
             return Ok(());
         }
 
+        let (signal_shutdown, shutdown_signal) = oneshot::channel();
+
         let cmd = format!(
             "{} --newline --no-colors{} {} '{}'",
             state.downloader,
@@ -239,7 +260,7 @@ impl Video {
                     .wrap_err_with(|| format!("Command failed to start: {cmd}"))?;
 
                 if let Some(process_id) = child.id() {
-                    self.set_stage_running(process_id).await;
+                    self.set_stage_running(process_id, shutdown_signal).await;
                 }
 
                 child
@@ -254,9 +275,16 @@ impl Video {
             self.set_stage_finished().await;
         }
 
-        // TODO: Could send child shutdown complete signal here:
-        //       During shutdown, we could use child shutdown-complete signals,
-        //       rather than waiting and regularly checking for all children having terminated.
+        // Send shutdown signal to the receiver which had been placed in `Stage::Running`.
+        //
+        // If early shutdown had been requested (and a SIGINT sent to the child process),
+        // then this receiver has been taken out of the video's `Stage` and awaited.
+        //
+        // However, in case of a normal shutdown - with the child terminating by itself,
+        // rather than via shutdown request SIGINT, the receiver will already have been dropped,
+        // when transitioning above from `Stage::Running` to either `Stage::Failed` or `Stage::Finished`.
+        // In that case, the `send` will fail. We can silently ignore this failure.
+        let _ = signal_shutdown.send(());
 
         Ok(())
     }
@@ -347,8 +375,14 @@ impl Video {
     }
 
     pub(crate) async fn initiate_shutdown(&self) -> Result<()> {
-        let stage = *self.stage().await;
-        if let Stage::Running { process_id } = stage {
+        // Get process ID - if available - then drop the read guard.
+        let maybe_process_id = match *self.stage().await {
+            Stage::Running { process_id, .. } => Some(process_id),
+            _ => None,
+        };
+
+        // Use the process ID - if available - acquiring a write guard.
+        if let Some(process_id) = maybe_process_id {
             debug!("Shutting down child process {process_id}.");
 
             self.set_stage_shutting_down().await;
@@ -369,8 +403,8 @@ impl Video {
 }
 
 impl<'a> VideoRead<'a> {
-    pub(crate) fn stage(&self) -> Stage {
-        *self.stage
+    pub(crate) fn stage(&self) -> &Stage {
+        &self.stage
     }
 
     pub(crate) fn url(&self) -> &'a str {

@@ -1,9 +1,4 @@
-use std::{
-    borrow::Cow,
-    io::{self, Stdout},
-    rc::Rc,
-    sync::Arc,
-};
+use std::{borrow::Cow, io, rc::Rc, sync::Arc};
 
 use color_eyre::eyre::{bail, Report, Result};
 use crossterm::{
@@ -153,19 +148,19 @@ impl Ui {
         Ok(())
     }
 
-    pub(crate) fn make_terminal() -> Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
+    pub(crate) fn make_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
         let backend = CrosstermBackend::new(io::stdout());
         Ok(Terminal::new(backend)?)
     }
 
-    fn take_terminal() -> Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
+    fn take_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
         enable_raw_mode()?;
         execute!(io::stdout(), EnterAlternateScreen)?;
         Self::make_terminal()
     }
 
     pub(crate) fn release_terminal(
-        mut terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
+        mut terminal: Terminal<CrosstermBackend<io::Stdout>>,
     ) -> Result<(), io::Error> {
         terminal.show_cursor()?;
         execute!(io::stdout(), LeaveAlternateScreen)?;
@@ -200,7 +195,7 @@ impl Ui {
     async fn render<'a>(
         &self,
         state: &State,
-        terminal: &'a mut Terminal<CrosstermBackend<std::io::Stdout>>,
+        terminal: &'a mut Terminal<CrosstermBackend<io::Stdout>>,
     ) -> Result<()> {
         // The terminal's `draw()` method runs a sync closure, so we need to acquire all
         // read guards before we can start rendering.
@@ -293,11 +288,7 @@ impl Ui {
         all_videos_read
     }
 
-    fn render_app_frame(
-        frame: &mut Frame<'_, CrosstermBackend<Stdout>>,
-        chunks: &Rc<[Rect]>,
-        app_title: Cow<'_, str>,
-    ) {
+    fn render_app_frame(frame: &mut Frame<'_>, chunks: &Rc<[Rect]>, app_title: Cow<'_, str>) {
         frame.render_widget(
             Table::new([])
                 .header(
@@ -328,7 +319,7 @@ impl Ui {
     }
 
     fn render_video_title(
-        frame: &mut Frame<'_, CrosstermBackend<Stdout>>,
+        frame: &mut Frame<'_>,
         chunks: &Rc<[Rect]>,
         chunk_start: usize,
         video: &VideoRead<'_>,
@@ -354,7 +345,7 @@ impl Ui {
     }
 
     fn render_video_progress_detail(
-        frame: &mut Frame<'_, CrosstermBackend<Stdout>>,
+        frame: &mut Frame<'_>,
         chunks: &Rc<[Rect]>,
         chunk_start: usize,
         video: &VideoRead<'_>,
@@ -438,7 +429,7 @@ impl Ui {
     }
 
     fn render_video_progress_bar(
-        frame: &mut Frame<'_, CrosstermBackend<Stdout>>,
+        frame: &mut Frame<'_>,
         chunks: &Rc<[Rect]>,
         chunk_start: usize,
         video: &VideoRead<'_>,

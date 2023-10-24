@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Tighten code style to pedantic level.
 - Signal child process shutdown to global shutdown process, rather than polling child stages.
+- Update dependencies.
 
 ## [0.11.1] - 2023-10-21
 

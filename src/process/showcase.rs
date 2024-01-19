@@ -15,7 +15,8 @@ use crate::{
 };
 
 static REGEX_SHOWCASE_IFRAME: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"<iframe[^>]* src="(?P<embed_url>https://vimeo\.com/showcase/[^"]+)""#).unwrap()
+    Regex::new(r#"<iframe[^>]* (?:data-)?src="(?P<embed_url>https://vimeo\.com/showcase/[^"]+)""#)
+        .unwrap()
 });
 
 static REGEX_EMBED_URL: Lazy<Regex> =

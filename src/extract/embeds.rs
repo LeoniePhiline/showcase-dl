@@ -10,8 +10,10 @@ use tracing::{debug, info, trace};
 use crate::state::State;
 
 static REGEX_VIDEO_IFRAME: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"<iframe[^>]* src="(?P<embed_url>https://player\.vimeo\.com/video/[^"]+)""#)
-        .unwrap()
+    Regex::new(
+        r#"<iframe[^>]* (?:data-)?src="(?P<embed_url>https://player\.vimeo\.com/video/[^"]+)""#,
+    )
+    .unwrap()
 });
 
 pub(crate) async fn extract_and_download_embeds(url: Url, state: Arc<State>) -> Result<()> {

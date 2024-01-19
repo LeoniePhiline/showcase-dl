@@ -11,7 +11,7 @@ use crate::{
 };
 
 static REGEX_TITLE_TAG: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r#"<title>(?P<title>.*?)</title>"#).unwrap());
+    Lazy::new(|| Regex::new(r"<title>(?P<title>.*?)</title>").unwrap());
 
 pub(crate) async fn process_simple_player(
     player_url: &str,

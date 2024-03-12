@@ -3,7 +3,7 @@ use std::sync::Arc;
 use color_eyre::{eyre::Result, Report};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use tracing::{debug, info, trace};
+use tracing::{debug, info, instrument, trace};
 
 use crate::{
     state::{video::Video, State},
@@ -13,6 +13,7 @@ use crate::{
 static REGEX_TITLE_TAG: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"<title>(?P<title>.*?)</title>").unwrap());
 
+#[instrument(skip(state))]
 pub(crate) async fn process_simple_player(
     player_url: &str,
     referer: Option<&str>,
@@ -48,8 +49,12 @@ pub(crate) async fn process_simple_player(
     Ok(())
 }
 
+#[instrument]
 async fn extract_simple_player_title(video: Arc<Video>, referer: Option<&str>) -> Result<()> {
-    let response_text = util::fetch_with_referer(video.url(), referer).await?;
+    let response_text = util::fetch_with_retry(video.url(), referer, None)
+        .await?
+        .text()
+        .await?;
 
     trace!(%response_text, "Trying to extract the video title from '{}'...", video.url());
 

@@ -4,29 +4,26 @@ use color_eyre::eyre::{eyre, Result};
 use json_dotpath::DotPaths;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use reqwest::{header::AUTHORIZATION, Client, ClientBuilder};
 use serde_json::Value;
-use tracing::{debug, trace};
+use tracing::{debug, instrument, trace};
 
-use crate::state::State;
+use crate::{state::State, util};
 
 static REGEX_EVENT_URL_PARAMS: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"https://vimeo.com/event/(?P<event_id>\d+)(?:/(?P<event_hash>[\da-f]+))?").unwrap()
 });
 
+#[instrument(skip(state))]
 pub(crate) async fn process_event(event_url: &str, state: Arc<State>) -> Result<()> {
     // Assert valid event URL and extract ID and hash.
     let (event_id, maybe_event_hash) = extract_event_url_params(event_url)?;
 
-    // Enable the cookie store feature.
-    let client = ClientBuilder::new().cookie_store(true).build()?;
-
     // Get event page (input URL), we need the cookie.
     // Reqwest stores the response cookie in its store, to be re-used in `get_jwt`.
-    let _response = client.get(event_url).send().await?;
+    let _response = util::fetch_with_retry(event_url, None, None).await?;
 
     // Use the cookie to get a JWT.
-    let jwt = get_jwt(client.clone()).await?;
+    let jwt = get_jwt().await?;
 
     // Use the JWT to retrieve the `clip_to_play` config URL.
     let config_url = retrieve_config_url(event_id, maybe_event_hash, &jwt).await?;
@@ -38,6 +35,7 @@ pub(crate) async fn process_event(event_url: &str, state: Arc<State>) -> Result<
     Ok(())
 }
 
+#[instrument]
 fn extract_event_url_params(event_url: &str) -> Result<(&str, Option<&str>)> {
     let captures = REGEX_EVENT_URL_PARAMS
         .captures(event_url)
@@ -52,11 +50,10 @@ fn extract_event_url_params(event_url: &str) -> Result<(&str, Option<&str>)> {
     Ok((event_id.as_str(), maybe_event_hash))
 }
 
-async fn get_jwt(authenticated_client: Client) -> Result<String> {
+#[instrument]
+async fn get_jwt() -> Result<String> {
     // Use the cookie to get a JWT.
-    let response_text = authenticated_client
-        .get("https://vimeo.com/_next/viewer")
-        .send()
+    let response_text = util::fetch_with_retry("https://vimeo.com/_next/viewer", None, None)
         .await?
         .text()
         .await?;
@@ -74,24 +71,26 @@ async fn get_jwt(authenticated_client: Client) -> Result<String> {
     Ok(jwt)
 }
 
+#[instrument]
 async fn retrieve_config_url(
     event_id: &str,
     maybe_event_hash: Option<&str>,
     jwt: &str,
 ) -> Result<String> {
-    let response_text = Client::new()
-        .get(format!(
+    let response_text = util::fetch_with_retry(
+        format!(
             "https://api.vimeo.com/live_events/{event_id}{}?fields=clip_to_play.config_url",
             match maybe_event_hash {
                 Some(event_hash) => format!(":{event_hash}"),
                 None => String::new(),
             }
-        ))
-        .header(AUTHORIZATION, format!("jwt {jwt}"))
-        .send()
-        .await?
-        .text()
-        .await?;
+        ),
+        None,
+        Some(&format!("jwt {jwt}")),
+    )
+    .await?
+    .text()
+    .await?;
     trace!(live_events_response_text = %response_text);
 
     // Parsing in a separate step for easier JSON decode debugging.
@@ -110,8 +109,12 @@ async fn retrieve_config_url(
     Ok(config_url)
 }
 
+#[instrument]
 async fn retrieve_share_url(config_url: &str) -> Result<String> {
-    let response_text = Client::new().get(config_url).send().await?.text().await?;
+    let response_text = util::fetch_with_retry(config_url, None, None)
+        .await?
+        .text()
+        .await?;
     trace!(config_response_text = %response_text);
 
     // Parsing in a separate step for easier JSON decode debugging.

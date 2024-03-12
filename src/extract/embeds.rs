@@ -4,10 +4,10 @@ use color_eyre::eyre::{bail, Result};
 use futures::{stream, TryStreamExt};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use reqwest::{Client, Url};
-use tracing::{debug, info, trace};
+use reqwest::Url;
+use tracing::{debug, info, instrument, trace};
 
-use crate::state::State;
+use crate::{state::State, util};
 
 static REGEX_VIDEO_IFRAME: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
@@ -16,6 +16,7 @@ static REGEX_VIDEO_IFRAME: Lazy<Regex> = Lazy::new(|| {
     .unwrap()
 });
 
+#[instrument(skip(state))]
 pub(crate) async fn extract_and_download_embeds(url: Url, state: Arc<State>) -> Result<()> {
     let referer = Some(format!(
         "{}://{}/",
@@ -26,7 +27,10 @@ pub(crate) async fn extract_and_download_embeds(url: Url, state: Arc<State>) -> 
     info!("Fetch source page...");
     state.set_stage_fetching_source(url.as_str()).await;
 
-    let response_text = Client::new().get(url).send().await?.text().await?;
+    let response_text = util::fetch_with_retry(url, None, None)
+        .await?
+        .text()
+        .await?;
     trace!(page_response_text = %response_text);
 
     info!("Extract embeds...");
@@ -44,6 +48,7 @@ pub(crate) async fn extract_and_download_embeds(url: Url, state: Arc<State>) -> 
     Ok(())
 }
 
+#[instrument(skip(page_body, state))]
 async fn process_simple_embeds(
     page_body: &str,
     referer: Option<&str>,

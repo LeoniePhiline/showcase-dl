@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use color_eyre::eyre::Result;
 use reqwest::Url;
-use tracing::info;
+use tracing::{info, instrument};
 
 use crate::state::State;
 
@@ -14,6 +14,7 @@ pub(crate) fn is_player_url(url: &Url) -> bool {
         || host_str.ends_with("youtu.be")
 }
 
+#[instrument(skip(state))]
 pub(crate) async fn download_from_player(
     url: Url,
     referer: Option<&str>,

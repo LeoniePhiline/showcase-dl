@@ -5,9 +5,9 @@ use futures::{stream, TryStreamExt};
 use json_dotpath::DotPaths;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use reqwest::Client;
+
 use serde_json::Value;
-use tracing::{debug, info, trace};
+use tracing::{debug, info, instrument, trace};
 
 use crate::{
     state::{video::Video, State},
@@ -25,6 +25,7 @@ static REGEX_EMBED_URL: Lazy<Regex> =
 static REGEX_SHOWCASE_CONFIG: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"dataForPlayer = (?P<showcase_config>\{.*?\});").unwrap());
 
+#[instrument(skip(page_body, state))]
 pub(crate) async fn process_showcases(
     page_body: &str,
     referer: Option<&str>,
@@ -51,12 +52,17 @@ pub(crate) async fn process_showcases(
     Ok(())
 }
 
+#[instrument(skip(state))]
 pub(crate) async fn process_showcase(
     showcase_url: &str,
     referer: Option<&str>,
     state: Arc<State>,
 ) -> Result<()> {
-    let response_text = util::fetch_with_referer(showcase_url, referer).await?;
+    let response_text = util::fetch_with_retry(showcase_url, referer, None)
+        .await?
+        .text()
+        .await?;
+    trace!(showcase_response_text = %response_text);
 
     let maybe_captures = REGEX_SHOWCASE_CONFIG.captures(&response_text);
 
@@ -87,6 +93,7 @@ pub(crate) async fn process_showcase(
     Ok(())
 }
 
+#[instrument(skip(state))]
 async fn process_showcase_clip(
     clip: &Value,
     referer: Option<String>,
@@ -96,18 +103,21 @@ async fn process_showcase_clip(
         eyre!("could not read clip config URL from 'dataForPlayer.clips.[].config'")
     })?;
 
-    let client = Client::new();
-    let response_text = client.get(config_url).send().await?.text().await?;
-    trace!(config_response_text = %response_text);
+    let response_text = util::fetch_with_retry(&config_url, None, None)
+        .await?
+        .text()
+        .await?;
+    trace!(showcase_response_text = %response_text);
 
     let config: Value = serde_json::from_str(&response_text)?;
+
     debug!("config response data: {config:#?}");
 
     let embed_code = config
         .dot_get::<String>("video.embed_code")?
         .ok_or_else(|| eyre!("could not extract clip embed code 'video.embed_code' from config"))?;
 
-    debug!("config embed_code: {embed_code:#?}");
+    debug!("config embed_code: {embed_code}");
 
     let captures = REGEX_EMBED_URL.captures(&embed_code).ok_or_else(|| {
         eyre!(

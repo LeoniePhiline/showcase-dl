@@ -10,7 +10,7 @@ use reqwest::{
     Client, IntoUrl, Response, StatusCode, Url,
 };
 use tokio::task::JoinHandle;
-use tracing::{info, instrument, trace, warn};
+use tracing::{info, instrument, trace, warn, Instrument};
 
 static CLIENT: OnceCell<Client> = OnceCell::new();
 
@@ -104,7 +104,7 @@ async fn spawn_fetch_with_retry(
 
             return Ok::<Response, Report>(response);
         }
-    })
+    }.in_current_span())
     .await?
 }
 

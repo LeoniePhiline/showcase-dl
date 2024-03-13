@@ -20,7 +20,7 @@ use ratatui::{
     Frame, Terminal,
 };
 use tokio::{sync::oneshot, time::MissedTickBehavior};
-use tracing::error;
+use tracing::{error, Instrument};
 
 use crate::state::{
     video::{progress::ProgressDetail, Stage as VideoStage, Video, VideoRead},
@@ -106,7 +106,7 @@ impl Ui {
                                                     Ok(()) => {},
                                                     Err(e) => error!("{e}"),
                                                 }
-                                             }
+                                             }.in_current_span()
                                         );
                                     }
                                 },

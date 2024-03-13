@@ -14,7 +14,7 @@ use tokio::{
     sync::{oneshot, RwLock, RwLockReadGuard},
     task::JoinHandle,
 };
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, info, trace, warn, Instrument};
 
 use crate::util::maybe_join;
 use progress::ProgressDetail;
@@ -301,22 +301,25 @@ impl Video {
             .map(|stderr| self.clone().consume_stream(stderr));
 
         let await_exit = async {
-            tokio::spawn(async move {
-                let exit_status = child.wait().await.wrap_err("Downloader failed to run")?;
+            tokio::spawn(
+                async move {
+                    let exit_status = child.wait().await.wrap_err("Downloader failed to run")?;
 
-                if !exit_status.success() {
-                    return Err(match exit_status.code() {
-                        Some(status_code) => {
-                            eyre!("Downloader exited with status code {status_code}")
-                        }
-                        None => {
-                            eyre!("Downloader terminated by signal")
-                        }
-                    });
+                    if !exit_status.success() {
+                        return Err(match exit_status.code() {
+                            Some(status_code) => {
+                                eyre!("Downloader exited with status code {status_code}")
+                            }
+                            None => {
+                                eyre!("Downloader terminated by signal")
+                            }
+                        });
+                    }
+
+                    Ok::<(), Report>(())
                 }
-
-                Ok::<(), Report>(())
-            })
+                .in_current_span(),
+            )
             .await??;
 
             Ok(())
@@ -339,27 +342,30 @@ impl Video {
         let mut lines = BufReader::new(reader).lines();
 
         let video = self;
-        tokio::spawn(async move {
-            while let Some(next_line) = lines.next_line().await? {
-                video
-                    .use_title(|title| {
-                        let title = match *title {
-                            Some(ref title) => title,
-                            None => video.url(),
-                        };
-                        if next_line.starts_with("ERROR:") {
-                            error!("Line from '{title}': '{next_line}'");
-                        } else {
-                            trace!("Line from '{title}': '{next_line}'");
-                        }
-                    })
-                    .await;
+        tokio::spawn(
+            async move {
+                while let Some(next_line) = lines.next_line().await? {
+                    video
+                        .use_title(|title| {
+                            let title = match *title {
+                                Some(ref title) => title,
+                                None => video.url(),
+                            };
+                            if next_line.starts_with("ERROR:") {
+                                error!("Line from '{title}': '{next_line}'");
+                            } else {
+                                trace!("Line from '{title}': '{next_line}'");
+                            }
+                        })
+                        .await;
 
-                video.update_line(next_line).await;
+                    video.update_line(next_line).await;
+                }
+
+                Ok::<(), Report>(())
             }
-
-            Ok::<(), Report>(())
-        })
+            .in_current_span(),
+        )
     }
 
     // Acquire read guards for all fine-grained access-controlled fields.

@@ -7,7 +7,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 use serde_json::Value;
-use tracing::{debug, info, instrument, trace};
+use tracing::{debug, info, instrument, trace, Instrument};
 
 use crate::{
     state::{video::Video, State},
@@ -83,8 +83,11 @@ pub(crate) async fn process_showcase(
                 .try_for_each_concurrent(None, |clip| async {
                     let state = state.clone();
                     let referer = referer.map(ToOwned::to_owned);
-                    tokio::spawn(async move { process_showcase_clip(&clip, referer, state).await })
-                        .await?
+                    tokio::spawn(
+                        async move { process_showcase_clip(&clip, referer, state).await }
+                            .in_current_span(),
+                    )
+                    .await?
                 })
                 .await?;
         }

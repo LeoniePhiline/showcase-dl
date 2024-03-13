@@ -133,6 +133,35 @@ Use a split terminal, or a separate terminal window, to observe the live message
 tail -f showcase-dl.log
 ```
 
+#### Collecting and viewing structured traces
+
+Use the `--otlp-export` CLI option to enable OpenTelemetry export.
+Exported OTLP data may be captured by Jaeger or any other compatible trace collector.
+
+![OpenTelemetry traces viewed in Jaeger UI](/img/OpenTelemetry.png)
+
+To collect traces, first start a [Jaeger all in one service](https://www.jaegertracing.io/docs/1.55/deployment/#all-in-one):
+
+```bash
+docker run -p 16686:16686 -e COLLECTOR_OTLP_ENABLED=true -p 4318:4318 jaegertracing/all-in-one:latest
+```
+
+Open the Jaeger UI in your browser: <http://localhost:16686/search?limit=1500&lookback=1h&service=showcase-dl>
+
+Then, start `showcase-dl` with the `--otlp-export` option:
+
+```bash
+RUST_LOG=warn,showcase_dl=trace ./target/release/showcase-dl --otlp-export "<URL>"
+```
+
+You may use the `-v` CLI verbosity flag
+or the [`EnvFilter`](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html)
+as detailed above, and as you see fit.
+
+Switching back to Jaeger in your browser window, repeat the prefilled search, then click the search result trace to inspect its tree.
+
+Note that traces are incomplete while the tool is running. Some traces may be misplaced until their parent span has finished. Quit `showcase-dl`, then repeat the search, to view the most complete trace tree possible.
+
 ### Custom downloader
 
 To use a custom version of `yt-dlp` or `youtube-dl`, pass the path to it via the `--downloader` option, e.g.:

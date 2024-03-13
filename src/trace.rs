@@ -1,7 +1,6 @@
 use clap_verbosity_flag::Verbosity;
 use color_eyre::eyre::{eyre, Result};
 use opentelemetry::KeyValue;
-use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::Resource;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_error::ErrorLayer;
@@ -11,40 +10,32 @@ use tracing_subscriber::{prelude::*, EnvFilter};
 use crate::args::Args;
 
 pub(crate) fn init(args: &Args) -> Result<WorkerGuard> {
-    // TODO: Log into a buffer and display that in a bottom split pane.
-
     // Log file
+    // TODO: Log into a buffer and display that in a bottom split pane.
     let file_appender = tracing_appender::rolling::never(".", "showcase-dl.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
-    let mut metadata = tonic::metadata::MetadataMap::with_capacity(1);
-    metadata.insert("x-source-url", args.url.parse()?);
-    if let Some(referer) = args.referer.as_deref() {
-        metadata.insert("x-referer-url", referer.parse()?);
-    }
-
-    // Open telemetry export
-    let tracer = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(
-            opentelemetry_otlp::new_exporter()
-                .tonic()
-                .with_endpoint("http://localhost:4317")
-                .with_metadata(metadata),
-        )
-        .with_trace_config(
-            opentelemetry_sdk::trace::config().with_resource(Resource::new(vec![KeyValue::new(
-                "service.name",
-                "showcase-dl",
-            )])),
-        )
-        .install_batch(opentelemetry_sdk::runtime::Tokio)?;
-
-    // Create a tracing layer with the configured tracer
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-
     tracing_subscriber::registry()
-        .with(telemetry.with_filter(env_filter(&args.verbosity)))
+        .with(if args.otlp_export {
+            Some({
+                // Open telemetry export
+                let tracer = opentelemetry_otlp::new_pipeline()
+                    .tracing()
+                    .with_exporter(opentelemetry_otlp::new_exporter().http())
+                    .with_trace_config(opentelemetry_sdk::trace::config().with_resource(
+                        Resource::new(vec![KeyValue::new("service.name", "showcase-dl")]),
+                    ))
+                    // .install_simple()?;
+                    .install_batch(opentelemetry_sdk::runtime::Tokio)?;
+
+                // Create a tracing layer with the configured tracer
+                let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+
+                telemetry.with_filter(env_filter(&args.verbosity))
+            })
+        } else {
+            None
+        })
         .with(
             tracing_subscriber::fmt::layer()
                 .pretty()

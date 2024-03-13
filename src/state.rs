@@ -1,9 +1,9 @@
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 
 use color_eyre::eyre::{eyre, Result};
 use futures::future::join_all;
 use tokio::sync::{oneshot, RwLock, RwLockReadGuard};
-use tracing::{debug, info};
+use tracing::{debug, info, instrument};
 
 use self::video::Video;
 
@@ -37,14 +37,17 @@ impl State {
         }
     }
 
-    pub(crate) async fn set_stage_fetching_source(&self, page_url: impl Into<String>) {
+    #[instrument(skip(self))]
+    pub(crate) async fn set_stage_fetching_source(&self, page_url: impl Into<String> + Debug) {
         *self.stage.write().await = Stage::FetchingSource(page_url.into());
     }
 
+    #[instrument(skip(self))]
     pub(crate) async fn set_stage_processing(&self) {
         *self.stage.write().await = Stage::Processing;
     }
 
+    #[instrument(skip(self))]
     pub(crate) async fn set_stage_done(&self) {
         *self.stage.write().await = Stage::Done;
     }
@@ -53,6 +56,7 @@ impl State {
         self.stage.read().await
     }
 
+    #[instrument(skip(self))]
     pub(crate) async fn push_video(&self, video: Arc<Video>) {
         let mut videos = self.videos.write().await;
         (*videos).push(video);
@@ -62,6 +66,7 @@ impl State {
         self.videos.read().await
     }
 
+    #[instrument(skip(self))]
     pub(crate) async fn initiate_shutdown(
         &self,
         global_shutdown_complete: oneshot::Sender<()>,

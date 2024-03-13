@@ -1,4 +1,4 @@
-use std::{num::NonZeroU32, process::Stdio, sync::Arc};
+use std::{fmt::Debug, num::NonZeroU32, process::Stdio, sync::Arc};
 
 use color_eyre::{
     eyre::{eyre, Result, WrapErr},
@@ -14,7 +14,7 @@ use tokio::{
     sync::{oneshot, RwLock, RwLockReadGuard},
     task::JoinHandle,
 };
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, info, instrument, trace, warn, Instrument};
 
 use crate::util::maybe_join;
 use progress::ProgressDetail;
@@ -76,13 +76,18 @@ static REGEX_DOWNLOAD_PROGRESS: Lazy<Regex> = Lazy::new(|| {
 });
 
 impl Video {
-    pub(crate) fn new(url: impl Into<String>, referer: Option<impl Into<String>>) -> Self {
+    #[instrument]
+    pub(crate) fn new(
+        url: impl Into<String> + Debug,
+        referer: Option<impl Into<String> + Debug>,
+    ) -> Self {
         Self::new_with_title(url.into(), referer.map(Into::into), None)
     }
 
+    #[instrument]
     pub(crate) fn new_with_title(
-        url: impl Into<String>,
-        referer: Option<impl Into<String>>,
+        url: impl Into<String> + Debug,
+        referer: Option<impl Into<String> + Debug>,
         title: Option<String>,
     ) -> Self {
         Self {
@@ -96,6 +101,7 @@ impl Video {
         }
     }
 
+    #[instrument]
     pub(crate) async fn set_stage_running(
         &self,
         process_id: u32,
@@ -107,14 +113,17 @@ impl Video {
         };
     }
 
+    #[instrument]
     pub(crate) async fn set_stage_shutting_down(&self) {
         *self.stage.write().await = Stage::ShuttingDown;
     }
 
+    #[instrument]
     pub(crate) async fn set_stage_finished(&self) {
         *self.stage.write().await = Stage::Finished;
     }
 
+    #[instrument]
     pub(crate) async fn set_stage_failed(&self) {
         *self.stage.write().await = Stage::Failed;
     }
@@ -123,6 +132,7 @@ impl Video {
         self.stage.read().await
     }
 
+    #[instrument]
     pub(crate) async fn take_shutdown_signal(&self) -> Option<oneshot::Receiver<()>> {
         match &mut *self.stage.write().await {
             Stage::Running {
@@ -213,6 +223,7 @@ impl Video {
         self.output_file.read().await
     }
 
+    #[instrument(skip(state))]
     pub(crate) async fn download(self: Arc<Self>, state: Arc<State>) -> Result<()> {
         if state.is_shutting_down().await {
             warn!("Refusing to start a new download during shutdown.");
@@ -289,6 +300,7 @@ impl Video {
         Ok(())
     }
 
+    #[instrument]
     async fn child_read_to_end(self: Arc<Self>, mut child: Child) -> Result<()> {
         let consume_stdout = child
             .stdout
@@ -301,22 +313,25 @@ impl Video {
             .map(|stderr| self.clone().consume_stream(stderr));
 
         let await_exit = async {
-            tokio::spawn(async move {
-                let exit_status = child.wait().await.wrap_err("Downloader failed to run")?;
+            tokio::spawn(
+                async move {
+                    let exit_status = child.wait().await.wrap_err("Downloader failed to run")?;
 
-                if !exit_status.success() {
-                    return Err(match exit_status.code() {
-                        Some(status_code) => {
-                            eyre!("Downloader exited with status code {status_code}")
-                        }
-                        None => {
-                            eyre!("Downloader terminated by signal")
-                        }
-                    });
+                    if !exit_status.success() {
+                        return Err(match exit_status.code() {
+                            Some(status_code) => {
+                                eyre!("Downloader exited with status code {status_code}")
+                            }
+                            None => {
+                                eyre!("Downloader terminated by signal")
+                            }
+                        });
+                    }
+
+                    Ok::<(), Report>(())
                 }
-
-                Ok::<(), Report>(())
-            })
+                .in_current_span(),
+            )
             .await??;
 
             Ok(())
@@ -332,34 +347,38 @@ impl Video {
         Ok(())
     }
 
-    fn consume_stream<A: AsyncRead + Unpin + Send + 'static>(
+    #[instrument]
+    fn consume_stream<A: AsyncRead + Unpin + Send + 'static + Debug>(
         self: Arc<Self>,
         reader: A,
     ) -> JoinHandle<Result<()>> {
         let mut lines = BufReader::new(reader).lines();
 
         let video = self;
-        tokio::spawn(async move {
-            while let Some(next_line) = lines.next_line().await? {
-                video
-                    .use_title(|title| {
-                        let title = match *title {
-                            Some(ref title) => title,
-                            None => video.url(),
-                        };
-                        if next_line.starts_with("ERROR:") {
-                            error!("Line from '{title}': '{next_line}'");
-                        } else {
-                            trace!("Line from '{title}': '{next_line}'");
-                        }
-                    })
-                    .await;
+        tokio::spawn(
+            async move {
+                while let Some(next_line) = lines.next_line().await? {
+                    video
+                        .use_title(|title| {
+                            let title = match *title {
+                                Some(ref title) => title,
+                                None => video.url(),
+                            };
+                            if next_line.starts_with("ERROR:") {
+                                error!("Line from '{title}': '{next_line}'");
+                            } else {
+                                trace!("Line from '{title}': '{next_line}'");
+                            }
+                        })
+                        .await;
 
-                video.update_line(next_line).await;
+                    video.update_line(next_line).await;
+                }
+
+                Ok::<(), Report>(())
             }
-
-            Ok::<(), Report>(())
-        })
+            .in_current_span(),
+        )
     }
 
     // Acquire read guards for all fine-grained access-controlled fields.
@@ -374,6 +393,7 @@ impl Video {
         }
     }
 
+    #[instrument]
     pub(crate) async fn initiate_shutdown(&self) -> Result<()> {
         // Get process ID - if available - then drop the read guard.
         let maybe_process_id = match *self.stage().await {

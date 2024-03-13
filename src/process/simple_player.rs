@@ -3,7 +3,7 @@ use std::sync::Arc;
 use color_eyre::{eyre::Result, Report};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use tracing::{debug, info, instrument, trace};
+use tracing::{debug, info, instrument, trace, Instrument};
 
 use crate::{
     state::{video::Video, State},
@@ -26,22 +26,28 @@ pub(crate) async fn process_simple_player(
         async {
             let video = video.clone();
             let referer = referer.map(ToOwned::to_owned);
-            tokio::spawn(async move {
-                debug!("Fetch title for simple player '{}'...", video.url());
-                extract_simple_player_title(video, referer.as_deref()).await?;
-                Ok::<(), Report>(())
-            })
+            tokio::spawn(
+                async move {
+                    debug!("Fetch title for simple player '{}'...", video.url());
+                    extract_simple_player_title(video, referer.as_deref()).await?;
+                    Ok::<(), Report>(())
+                }
+                .in_current_span(),
+            )
             .await?
         },
         async {
             let video = video.clone();
-            tokio::spawn(async move {
-                let url = video.url();
-                info!("Download simple player '{url}'...");
-                video.clone().download(state).await?;
+            tokio::spawn(
+                async move {
+                    let url = video.url();
+                    info!("Download simple player '{url}'...");
+                    video.clone().download(state).await?;
 
-                Ok::<(), Report>(())
-            })
+                    Ok::<(), Report>(())
+                }
+                .in_current_span(),
+            )
             .await?
         }
     )?;

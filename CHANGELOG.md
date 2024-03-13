@@ -11,6 +11,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.13.0] 2024-03-13
+
+### Added
+
+#### Tracing improvements and OpenTelemetry
+
+- Instrument most functions and methods to generate meaningful spans
+- Preserve spans in spawned tags
+- Implement optional OpenTelemetry export to local Jaeger instance.
+  See [`README`][readme] for instructions.
+
+To avoid misunderstandings:
+
+_The OpenTelementry feature is local-only and opt-in, and only used for debugging purposes._
+
+[readme]: ./README.md
+
+### Changed
+
+- Update dependencies.
+- Migrate ratatui to v0.26.1.
+- Upgrade nix to v0.28.0.
+
+## [0.12.0] 2024-03-12
+
+### Fixed
+
+- Fix failures upon `HTTP 429 Too Many Requests` response status by globally implementing fetch retry.
+
+## [0.11.2] 2024-01-19
+
+### Added
+
 - Recognize lazy-loaded inline frame source URLs.
 
 ### Changed
@@ -77,7 +116,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Store `downloader` and `downloader_options`  in `State` rather than pulling them all the way through the call tree.
+- Store `downloader` and `downloader_options` in `State` rather than pulling them all the way through the call tree.
 
 ## [0.8.0] - 2023-09-12
 
@@ -134,7 +173,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.0] - 2023-06-04
 
-### Added 
+### Added
 
 - Enable tracing [`EnvFilter`](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html).
   ([#2](https://github.com/LeoniePhiline/showcase-dl/issues/2))
@@ -173,7 +212,6 @@ _(none)_
 ### Changed
 
 - Update transitive dependencies.
-
 
 ## [0.5.1] - 2023-02-10
 
@@ -251,7 +289,11 @@ _(none)_
 - Initial implementation.
 
 <!-- next-url -->
-[Unreleased]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.11.1...HEAD
+
+[Unreleased]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.12.0...v0.13.0
+[0.12.0]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.11.2...v0.12.0
+[0.11.2]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.9.0...v0.10.0
@@ -270,4 +312,3 @@ _(none)_
 [0.3.0]: https://github.com/LeoniePhiline/showcase-dl/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/LeoniePhiline/showcase-dl/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/LeoniePhiline/showcase-dl/releases/tag/0.1.0
-

@@ -290,7 +290,8 @@ impl Ui {
 
     fn render_app_frame(frame: &mut Frame<'_>, chunks: &Rc<[Rect]>, app_title: Cow<'_, str>) {
         frame.render_widget(
-            Table::new([])
+            Table::default()
+                .widths(layout::video_progress_detail_table_layout())
                 .header(
                     Row::new([
                         "Stage",
@@ -304,7 +305,6 @@ impl Ui {
                     .style(style::table_header_style())
                     .bottom_margin(1),
                 )
-                .widths(&layout::video_progress_detail_table_layout())
                 .column_spacing(2)
                 .block(
                     Block::default()
@@ -397,8 +397,7 @@ impl Ui {
                     }));
 
                     frame.render_widget(
-                        Table::new([Row::new(row)])
-                            .widths(&layout::video_raw_progress_table_layout())
+                        Table::new([Row::new(row)], layout::video_raw_progress_table_layout())
                             .column_spacing(2),
                         progress_detail_chunk,
                     );
@@ -418,9 +417,11 @@ impl Ui {
                     );
 
                     frame.render_widget(
-                        Table::new([Row::new(row)])
-                            .widths(&layout::video_progress_detail_table_layout())
-                            .column_spacing(2),
+                        Table::new(
+                            [Row::new(row)],
+                            layout::video_progress_detail_table_layout(),
+                        )
+                        .column_spacing(2),
                         progress_detail_chunk,
                     );
                 }

@@ -20,7 +20,7 @@ use ratatui::{
     Frame, Terminal,
 };
 use tokio::{sync::oneshot, time::MissedTickBehavior};
-use tracing::{error, Instrument};
+use tracing::{error, instrument, Instrument};
 
 use crate::state::{
     video::{progress::ProgressDetail, Stage as VideoStage, Video, VideoRead},
@@ -37,6 +37,7 @@ impl Ui {
         Ui
     }
 
+    #[instrument(skip(self, state, do_work))]
     pub(crate) async fn event_loop(
         &self,
         state: Arc<State>,
@@ -63,7 +64,7 @@ impl Ui {
             let (abort_handle, abort_registration) = AbortHandle::new_pair();
             let do_work_abortable = Abortable::new(
                 // Drive application process futures via closure.
-                do_work,
+                do_work.in_current_span(), // TODO: Test without in_current_span
                 abort_registration,
             );
 

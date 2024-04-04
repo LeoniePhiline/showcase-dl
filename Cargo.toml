@@ -25,7 +25,7 @@ regex = "1.6.0"
 reqwest = { version = "0.11.11", default-features = false, features = ["cookies", "rustls-tls"] }
 serde_json = "1.0.85"
 tokio = { version = "1.21.0", features = ["macros", "rt", "rt-multi-thread", "process"] }
-tracing = "0.1.36"
+tracing = "0.1.40"
 tracing-appender = "0.2.2"
 tracing-error = "0.2.0"
 tracing-opentelemetry = "0.23"

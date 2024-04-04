@@ -26,7 +26,7 @@ reqwest = { version = "0.11.11", default-features = false, features = ["cookies"
 serde_json = "1.0.115"
 tokio = { version = "1.21.0", features = ["macros", "rt", "rt-multi-thread", "process"] }
 tracing = "0.1.40"
-tracing-appender = "0.2.2"
+tracing-appender = "0.2.3"
 tracing-error = "0.2.0"
 tracing-opentelemetry = "0.23"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }

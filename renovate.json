@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    ":automergeDigest",
+    ":automergePatch",
+    ":automergeStableNonMajor",
+    ":dependencyDashboard",
+    ":maintainLockFilesWeekly",
+    ":semanticPrefixFixDepsChoreOthers",
+    "docker:pinDigests",
+    "group:monorepos",
+    "group:recommended",
+    "helpers:pinGitHubActionDigests",
+    "replacements:all",
+    "workarounds:all"
+  ],
+  "assignees": ["LeoniePhiline"],
+  "labels": ["dependencies"]
+}

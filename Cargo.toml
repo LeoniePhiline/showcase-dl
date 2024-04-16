@@ -23,7 +23,7 @@ opentelemetry_sdk = { version = "0.22", features = ["rt-tokio", "trace"] }
 ratatui = "0.26.2"
 regex = "1.10.4"
 reqwest = { version = "0.12.3", default-features = false, features = ["rustls-tls", "charset", "http2", "macos-system-configuration", "gzip", "brotli", "cookies"] }
-serde_json = "1.0.115"
+serde_json = "1.0.116"
 tokio = { version = "1.37.0", features = ["macros", "rt", "rt-multi-thread", "process"] }
 tracing = "0.1.40"
 tracing-appender = "0.2.3"

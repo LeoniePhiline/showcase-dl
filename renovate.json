@@ -15,5 +15,11 @@
     "workarounds:all"
   ],
   "assignees": ["LeoniePhiline"],
-  "labels": ["dependencies"]
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "groupName": "opentelemetry ecosystem packages",
+      "matchSourceUrlPrefixes": ["https://github.com/open-telemetry/"]
+    }
+  ]
 }

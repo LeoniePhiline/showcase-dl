@@ -19,7 +19,10 @@
   "packageRules": [
     {
       "groupName": "opentelemetry ecosystem packages",
-      "matchSourceUrlPrefixes": ["https://github.com/open-telemetry/"]
+      "matchSourceUrlPrefixes": [
+        "https://github.com/open-telemetry",
+        "https://github.com/tokio-rs/tracing-opentelemetry"
+      ]
     }
   ]
 }

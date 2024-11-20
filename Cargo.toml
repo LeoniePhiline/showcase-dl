@@ -8,7 +8,7 @@ publish = false
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive", "wrap_help"] }
-clap-verbosity-flag = "2.2.0"
+clap-verbosity-flag = "3.0.0"
 color-eyre = "0.6.3"
 crossterm = { version = "0.28.0", features = ["event-stream"] }
 futures = "0.3.30"

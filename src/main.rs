@@ -20,7 +20,6 @@
 #![deny(
     // fuzzy_provenance_casts, UNSTABLE: https://github.com/rust-lang/rust/issues/95228
     // lossy_provenance_casts, UNSTABLE: https://github.com/rust-lang/rust/issues/95228
-    pointer_structural_match,
     unsafe_code // Exceptions must be discussed and deemed indispensable and use `#![deny(invalid_reference_casting, unsafe_op_in_unsafe_fn)]`.
 )]
 // Opt-in to allowed-by-default clippy lints

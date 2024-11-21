@@ -8,13 +8,12 @@ publish = false
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive", "wrap_help"] }
-clap-verbosity-flag = "2.2.0"
+clap-verbosity-flag = { version = "3.0.0", default-features = false, features = ["tracing"] }
 color-eyre = "0.6.3"
 crossterm = { version = "0.28.0", features = ["event-stream"] }
 futures = "0.3.30"
 htmlize = { version = "1.0.5", features = ["unescape"] }
 json_dotpath = "1.1.0"
-log = "0.4.21"
 nix = { version = "0.29.0", features = ["process", "signal"] }
 once_cell = "1.19.0"
 opentelemetry = "0.23"

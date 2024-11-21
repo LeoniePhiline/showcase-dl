@@ -220,7 +220,7 @@ impl Ui {
         let all_videos_read = Self::acquire_all_videos_sorted(all_videos.iter()).await;
 
         terminal.draw(|frame| {
-            let area = frame.size();
+            let area = frame.area();
 
             let chunks = layout::layout_chunks(area, &all_videos_read);
 

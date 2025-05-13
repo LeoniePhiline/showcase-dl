@@ -11,7 +11,7 @@ use crate::{state::State, util};
 
 static REGEX_VIDEO_IFRAME: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        r#"<iframe[^>]* (?:data-)?src="(?P<embed_url>https://player\.vimeo\.com/video/[^"]+)""#,
+        r#"<iframe[^>]* (?:data-)?src="(?P<embed_url>https://(?:player\.vimeo\.com/video|www\.youtube\.com/embed)/[^"]+)""#,
     )
     .unwrap()
 });

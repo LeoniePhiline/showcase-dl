@@ -37,6 +37,7 @@ pub(crate) async fn download_from_player(
     if url_str.starts_with("https://player.vimeo.com/video/")
         || url_str.starts_with("https://www.youtube.com/watch?v=")
         || url_str.starts_with("https://www.youtube.com/live/")
+        || url_str.starts_with("https://www.youtube.com/embed/")
         || url_str.starts_with("https://youtu.be/")
     {
         return crate::process::simple_player::process_simple_player(

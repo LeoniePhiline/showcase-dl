@@ -19,11 +19,8 @@ static REGEX_SHOWCASE_IFRAME: Lazy<Regex> = Lazy::new(|| {
         .unwrap()
 });
 
-static REGEX_EMBED_URL: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r#"src="(?P<embed_url>[^"]+)""#).unwrap());
-
 static REGEX_SHOWCASE_CONFIG: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"dataForPlayer = (?P<showcase_config>\{.*?\});").unwrap());
+    Lazy::new(|| Regex::new(r#"\[\{"itemListElement":(?P<showcase_config>\[.*?\]),"@type":"ItemList","@context":"http://schema.org"\}\]"#).unwrap());
 
 #[instrument(skip(page_body, state))]
 pub(crate) async fn process_showcases(
@@ -66,31 +63,29 @@ pub(crate) async fn process_showcase(
 
     let maybe_captures = REGEX_SHOWCASE_CONFIG.captures(&response_text);
 
-    if let Some(captures) = maybe_captures {
-        if let Some(showcase_config) = captures.name("showcase_config") {
-            debug!(
-                "Parsing showcase config JSON: {:#?}",
-                showcase_config.as_str()
-            );
-            let data: Value = serde_json::from_str(showcase_config.as_str())?;
-            debug!(decoded_showcase_config = ?data);
+    let Some(captures) = maybe_captures else {
+        bail!(r#"could not find showcase config (`"itemListElement":[...]`) in the HTML response"#)
+    };
 
-            // Query for `{ "clips": [...] }` array
-            let clips = data.dot_get::<Vec<Value>>("clips")?.ok_or_else(|| {
-                eyre!("could not find 'clips' key in 'dataForPlayer', or 'clips' was not an array (hint: if you are passing a Vimeo URL, then try providing the embedding page URL via the '--referer' option)")
-            })?;
-            stream::iter(clips.into_iter().map(Ok))
-                .try_for_each_concurrent(None, |clip| async {
-                    let state = state.clone();
-                    let referer = referer.map(ToOwned::to_owned);
-                    tokio::spawn(
-                        async move { process_showcase_clip(&clip, referer, state).await }
-                            .in_current_span(),
-                    )
-                    .await?
-                })
-                .await?;
-        }
+    if let Some(showcase_config) = captures.name("showcase_config") {
+        debug!(
+            "Parsing showcase config JSON: {:#?}",
+            showcase_config.as_str()
+        );
+        let clips: Vec<Value> = serde_json::from_str(showcase_config.as_str())?;
+        debug!(decoded_showcase_config = ?clips);
+
+        stream::iter(clips.into_iter().map(Ok))
+            .try_for_each_concurrent(None, |clip| async {
+                let state = state.clone();
+                let referer = referer.map(ToOwned::to_owned);
+                tokio::spawn(
+                    async move { process_showcase_clip(&clip, referer, state).await }
+                        .in_current_span(),
+                )
+                .await?
+            })
+            .await?;
     }
 
     Ok(())
@@ -102,52 +97,24 @@ async fn process_showcase_clip(
     referer: Option<String>,
     state: Arc<State>,
 ) -> Result<()> {
-    let config_url = clip.dot_get::<String>("config")?.ok_or_else(|| {
-        eyre!("could not read clip config URL from 'dataForPlayer.clips.[].config'")
+    let embed_url = clip.dot_get::<String>("embedUrl")?.ok_or_else(|| {
+        eyre!(r#"could not read clip embed URL from '`"itemListElement":[{{..., "embedUrl": "...", ...}}]`"#)
     })?;
 
-    let response_text = util::fetch_with_retry(&config_url, None, None)
-        .await?
-        .text()
-        .await?;
-    trace!(showcase_response_text = %response_text);
-
-    let config: Value = serde_json::from_str(&response_text)?;
-
-    debug!("config response data: {config:#?}");
-
-    let embed_code = config
-        .dot_get::<String>("video.embed_code")?
-        .ok_or_else(|| eyre!("could not extract clip embed code 'video.embed_code' from config"))?;
-
-    debug!("config embed_code: {embed_code}");
-
-    let captures = REGEX_EMBED_URL.captures(&embed_code).ok_or_else(|| {
-        eyre!(
-            "could not extract embed URL from config 'video.embed_code' string (no regex captures)"
-        )
+    let title = clip.dot_get::<String>("name")?.ok_or_else(|| {
+        eyre!(r#"could not read clip title from '`"itemListElement":[{{..., "name": "...", ...}}]`"#)
     })?;
 
-    match captures.name("embed_url") {
-        Some(embed_url_match) => {
-            debug!("embed_url_match: {embed_url_match:#?}");
 
-            let embed_url = htmlize::unescape_attribute(embed_url_match.as_str());
+    let video = Arc::new(Video::new_with_title(
+        &embed_url,
+        referer,
+        Some(title),
+    ));
+    (*state).push_video(video.clone()).await;
 
-            let video = Arc::new(Video::new_with_title(
-                embed_url.as_ref(),
-                referer,
-                config.dot_get::<String>("video.title")?,
-            ));
-            (*state).push_video(video.clone()).await;
-
-            info!("Download showcase clip '{embed_url}'...");
-            video.clone().download(state).await?;
-        }
-        None => {
-            bail!("Could not extract embed URL from config 'video.embed_code' string (embed_url not captured)");
-        }
-    }
+    info!("Download showcase clip '{embed_url}'...");
+    video.clone().download(state).await?;
 
     Ok(())
 }

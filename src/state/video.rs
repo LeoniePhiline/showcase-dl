@@ -431,8 +431,8 @@ impl<'a> VideoRead<'a> {
         self.url
     }
 
-    pub(crate) fn title(&self) -> &Option<String> {
-        &self.title
+    pub(crate) fn title(&self) -> Option<&str> {
+        self.title.as_deref()
     }
 
     pub(crate) fn progress_detail(&'a self) -> Option<ProgressDetail<'a>> {
@@ -477,11 +477,11 @@ impl<'a> VideoRead<'a> {
         }
     }
 
-    pub(crate) fn output_file(&self) -> &Option<String> {
-        &self.output_file
+    pub(crate) fn output_file(&self) -> Option<&str> {
+        self.output_file.as_deref()
     }
 
-    pub(crate) fn percent_done(&self) -> &Option<f64> {
-        &self.percent_done
+    pub(crate) fn percent_done(&self) -> Option<f64> {
+        *self.percent_done
     }
 }

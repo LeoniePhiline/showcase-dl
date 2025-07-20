@@ -48,7 +48,7 @@ fn video_stage_color(video_stage: &Stage) -> Color {
     match video_stage {
         Stage::Initializing => Color::LightCyan,
         Stage::Running { .. } => Color::LightYellow,
-        Stage::ShuttingDown { .. } => Color::LightBlue,
+        Stage::ShuttingDown => Color::LightBlue,
         Stage::Finished => Color::LightGreen,
         Stage::Failed => Color::LightRed,
     }

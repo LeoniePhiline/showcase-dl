@@ -31,7 +31,7 @@ pub(crate) fn init(args: &Args) -> Result<WorkerGuard> {
                 // Create a tracing layer with the configured tracer
                 let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
-                telemetry.with_filter(env_filter(&args.verbosity))
+                telemetry.with_filter(env_filter(args.verbosity))
             })
         } else {
             None
@@ -42,7 +42,7 @@ pub(crate) fn init(args: &Args) -> Result<WorkerGuard> {
                 .with_thread_names(true)
                 .with_line_number(true)
                 .with_writer(non_blocking)
-                .with_filter(env_filter(&args.verbosity)),
+                .with_filter(env_filter(args.verbosity)),
         )
         .with(ErrorLayer::default())
         .try_init()
@@ -51,7 +51,7 @@ pub(crate) fn init(args: &Args) -> Result<WorkerGuard> {
     Ok(guard)
 }
 
-fn env_filter(verbosity: &Verbosity) -> EnvFilter {
+fn env_filter(verbosity: Verbosity) -> EnvFilter {
     // Use `-v` (warn) to `-vvvv` (trace) for simple verbosity,
     // or use `RUST_LOG=target[span{field=value}]=level` for fine-grained verbosity control.
     // See https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html

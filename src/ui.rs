@@ -193,10 +193,10 @@ impl Ui {
         }
     }
 
-    async fn render<'a>(
+    async fn render(
         &self,
         state: &State,
-        terminal: &'a mut Terminal<CrosstermBackend<io::Stdout>>,
+        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     ) -> Result<()> {
         // The terminal's `draw()` method runs a sync closure, so we need to acquire all
         // read guards before we can start rendering.
@@ -332,7 +332,7 @@ impl Ui {
                     format!(
                         "{} ",
                         match video.title() {
-                            Some(title) => title.as_str(),
+                            Some(title) => title,
                             None => video.url(),
                         }
                     ),
@@ -368,7 +368,7 @@ impl Ui {
                 match video.stage() {
                     VideoStage::Initializing => "Intializing...",
                     VideoStage::Running { .. } => "Running...",
-                    VideoStage::ShuttingDown { .. } => "Shutting down...",
+                    VideoStage::ShuttingDown => "Shutting down...",
                     VideoStage::Finished => "Finished!",
                     VideoStage::Failed => "Failed!",
                 },
@@ -380,10 +380,7 @@ impl Ui {
             row.push(Span::raw(format!("{display_percent:.1} %")));
 
             // Column "Destination"
-            row.push(Span::raw(match video.output_file().as_ref() {
-                Some(output_file) => output_file.as_str(),
-                None => "",
-            }));
+            row.push(Span::raw(video.output_file().unwrap_or_default()));
 
             match progress {
                 ProgressDetail::Raw(line) => {
@@ -426,8 +423,8 @@ impl Ui {
                         progress_detail_chunk,
                     );
                 }
-            };
-        };
+            }
+        }
     }
 
     fn render_video_progress_bar(

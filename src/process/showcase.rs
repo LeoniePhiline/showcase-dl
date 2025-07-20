@@ -98,11 +98,11 @@ async fn process_showcase_clip(
     state: Arc<State>,
 ) -> Result<()> {
     let embed_url = clip.dot_get::<String>("embedUrl")?.ok_or_else(|| {
-        eyre!(r#"could not read clip embed URL from '`"itemListElement":[{{..., "embedUrl": "...", ...}}]`"#)
+        eyre!(r#"could not read clip embed URL from `"itemListElement":[{{..., "embedUrl": "...", ...}}]`"#)
     })?;
 
     let title = clip.dot_get::<String>("name")?.ok_or_else(|| {
-        eyre!(r#"could not read clip title from '`"itemListElement":[{{..., "name": "...", ...}}]`"#)
+        eyre!(r#"could not read clip title from `"itemListElement":[{{..., "name": "...", ...}}]`"#)
     })?;
 
 

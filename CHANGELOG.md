@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] <!-- release-date -->
 
+## [0.14.0] - 2025-12-02
+
 ### Added
 
 - Add support for YouTube embed URLs.
@@ -298,8 +300,9 @@ _(none)_
 - Initial implementation.
 
 <!-- next-url -->
+[Unreleased]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.14.0...HEAD
 
-[Unreleased]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.13.0...HEAD
+[0.14.0]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.11.2...v0.12.0
 [0.11.2]: https://github.com/LeoniePhiline/showcase-dl/compare/v0.11.1...v0.11.2

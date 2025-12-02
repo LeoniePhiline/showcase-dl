@@ -140,10 +140,10 @@ Exported OTLP data may be captured by Jaeger or any other compatible trace colle
 
 ![OpenTelemetry traces viewed in Jaeger UI](/img/OpenTelemetry.png)
 
-To collect traces, first start a [Jaeger all in one service](https://www.jaegertracing.io/docs/1.55/deployment/#all-in-one):
+To collect traces, first start a [Jaeger v2 service](https://www.jaegertracing.io/docs/2.12/deployment/):
 
 ```bash
-docker run -p 16686:16686 -e COLLECTOR_OTLP_ENABLED=true -p 4318:4318 jaegertracing/all-in-one:latest
+docker run -p 16686:16686 -e COLLECTOR_OTLP_ENABLED=true -p 4318:4318 jaegertracing/jaeger:latest
 ```
 
 Open the Jaeger UI in your browser: <http://localhost:16686/search?limit=1500&lookback=1h&service=showcase-dl>

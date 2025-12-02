@@ -128,7 +128,7 @@ impl Video {
         *self.stage.write().await = Stage::Failed;
     }
 
-    pub(crate) async fn stage(&self) -> RwLockReadGuard<Stage> {
+    pub(crate) async fn stage(&self) -> RwLockReadGuard<'_, Stage> {
         self.stage.read().await
     }
 
@@ -159,7 +159,7 @@ impl Video {
         *title = Some(new_title);
     }
 
-    pub(crate) async fn title(&self) -> RwLockReadGuard<Option<String>> {
+    pub(crate) async fn title(&self) -> RwLockReadGuard<'_, Option<String>> {
         self.title.read().await
     }
 
@@ -201,7 +201,7 @@ impl Video {
         }
     }
 
-    pub(crate) async fn line(&self) -> RwLockReadGuard<Option<String>> {
+    pub(crate) async fn line(&self) -> RwLockReadGuard<'_, Option<String>> {
         self.line.read().await
     }
 
@@ -210,7 +210,7 @@ impl Video {
         *percent_done = Some(new_percent);
     }
 
-    pub(crate) async fn percent_done(&self) -> RwLockReadGuard<Option<f64>> {
+    pub(crate) async fn percent_done(&self) -> RwLockReadGuard<'_, Option<f64>> {
         self.percent_done.read().await
     }
 
@@ -219,7 +219,7 @@ impl Video {
         *output_file = Some(new_output_file);
     }
 
-    pub(crate) async fn output_file(&self) -> RwLockReadGuard<Option<String>> {
+    pub(crate) async fn output_file(&self) -> RwLockReadGuard<'_, Option<String>> {
         self.output_file.read().await
     }
 
@@ -382,7 +382,7 @@ impl Video {
     }
 
     // Acquire read guards for all fine-grained access-controlled fields.
-    pub(crate) async fn read(&self) -> VideoRead {
+    pub(crate) async fn read(&self) -> VideoRead<'_>{
         VideoRead {
             stage: self.stage().await,
             url: &self.url,

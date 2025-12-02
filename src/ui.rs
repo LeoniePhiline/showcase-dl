@@ -269,7 +269,7 @@ impl Ui {
     /// The collection is returned sorted by title - where available - else URL.
     async fn acquire_all_videos_sorted(
         videos: core::slice::Iter<'_, Arc<Video>>,
-    ) -> Vec<VideoRead> {
+    ) -> Vec<VideoRead<'_>> {
         // Acquire read guards for all videos, to render full state.
         let mut all_videos_read: Vec<VideoRead> = stream::iter(videos)
             .map(|video| async { video.read().await })

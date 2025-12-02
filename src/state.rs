@@ -52,7 +52,7 @@ impl State {
         *self.stage.write().await = Stage::Done;
     }
 
-    pub(crate) async fn stage(&self) -> RwLockReadGuard<Stage> {
+    pub(crate) async fn stage(&self) -> RwLockReadGuard<'_, Stage> {
         self.stage.read().await
     }
 
@@ -62,7 +62,7 @@ impl State {
         (*videos).push(video);
     }
 
-    pub(crate) async fn videos(&self) -> RwLockReadGuard<Vec<Arc<Video>>> {
+    pub(crate) async fn videos(&self) -> RwLockReadGuard<'_, Vec<Arc<Video>>> {
         self.videos.read().await
     }
 

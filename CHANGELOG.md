@@ -11,11 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add support for YouTube embed URLs.
+
 ### Changed
+
+- Update documentation for Jaeger v2 service.
+- Update OpenTelemetry ecosystem to version 0.31.
 
 ### Fixed
 
-### Removed
+- Migrate Vimeo showcase configuration detection to new Schema structure.
+- Gracefully shut down the OpenTelemetry trace exporter,
+  flushing all pending closed trace spans.
+
+_The OpenTelemetry feature is local-only and opt-in, and only used for debugging purposes._
 
 ## [0.13.0] 2024-03-13
 
@@ -24,13 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Tracing improvements and OpenTelemetry
 
 - Instrument most functions and methods to generate meaningful spans
-- Preserve spans in spawned tags
+- Preserve spans in spawned tags.
 - Implement optional OpenTelemetry export to local Jaeger instance.
   See [`README`][readme] for instructions.
 
 To avoid misunderstandings:
 
-_The OpenTelementry feature is local-only and opt-in, and only used for debugging purposes._
+_The OpenTelemetry feature is local-only and opt-in, and only used for debugging purposes._
 
 [readme]: ./README.md
 

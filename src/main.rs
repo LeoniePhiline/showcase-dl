@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
 
     let args = args::parse();
 
-    let _appender_guard = trace::init(&args)?;
+    let (_appender_guard, _telemetry_guard) = trace::init(&args)?;
 
     let state = Arc::new(State::new(args.downloader, args.downloader_options));
     let ui = Ui::new();

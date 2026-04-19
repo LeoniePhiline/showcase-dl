@@ -19,7 +19,7 @@ once_cell = "1.19.0"
 opentelemetry = "0.31"
 opentelemetry-otlp = { version = "0.31.0", default-features = false, features = ["http-proto", "reqwest-client"] }
 opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio", "trace", "experimental_trace_batch_span_processor_with_async_runtime"] }
-ratatui = "0.29.0"
+ratatui = "0.30.0"
 regex = "1.10.4"
 reqwest = { version = "0.12.4", default-features = false, features = ["rustls-tls", "charset", "http2", "macos-system-configuration", "gzip", "brotli", "cookies"] }
 serde_json = "1.0.116"

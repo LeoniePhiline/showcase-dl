@@ -1,4 +1,4 @@
-use clap::{arg, command, Parser};
+use clap::Parser;
 
 pub(crate) fn parse() -> Args {
     Args::parse()

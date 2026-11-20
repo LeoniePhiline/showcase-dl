@@ -1649,6 +1649,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nix"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77730ed34f01f4990cb2ea67fec715ecebc6fab9a6396cf83c5529b13f581bdc"
+dependencies = [
+ "bitflags 2.13.2",
+ "cfg-if",
+ "cfg_aliases",
+ "libc",
+]
+
+[[package]]
 name = "nom"
 version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2731,7 +2743,7 @@ dependencies = [
  "futures",
  "htmlize",
  "json_dotpath",
- "nix 0.31.4",
+ "nix 0.32.0",
  "once_cell",
  "opentelemetry",
  "opentelemetry-otlp",
